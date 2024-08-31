@@ -2,13 +2,13 @@ return {
   version = "1.11",
   luaversion = "5.1",
   tiledversion = "1.11.0",
-  name = "castle",
+  name = "emerset",
   class = "",
-  tilewidth = 40,
-  tileheight = 40,
+  tilewidth = 32,
+  tileheight = 32,
   spacing = 0,
   margin = 0,
-  columns = 12,
+  columns = 16,
   image = "../../../assets/sprites/tilesets/emerest.png",
   imagewidth = 512,
   imageheight = 416,
@@ -21,11 +21,11 @@ return {
   },
   grid = {
     orientation = "orthogonal",
-    width = 40,
-    height = 40
+    width = 32,
+    height = 32
   },
   properties = {},
   wangsets = {},
-  tilecount = 120,
+  tilecount = 208,
   tiles = {}
 }

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.11" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="32" height="15" tilewidth="32" tileheight="32" infinite="0" backgroundcolor="#4c34ff" nextlayerid="14" nextobjectid="4">
+ <editorsettings>
+  <export target="fnas1.lua" format="lua"/>
+ </editorsettings>
+ <tileset firstgid="1" source="../tilesets/emerset.tsx"/>
+ <group id="8" name="background">
+  <imagelayer id="10" name="ghwater4" offsetx="0" offsety="66" parallaxx="1.2" repeatx="1">
+   <image source="../../../assets/sprites/world/maps/emerset/background/ghwater4.png" width="775" height="41"/>
+  </imagelayer>
+  <imagelayer id="13" name="ghwater3" offsetx="0" offsety="158" parallaxx="1.3" repeatx="1">
+   <image source="../../../assets/sprites/world/maps/emerset/background/ghwater3.png" width="775" height="66"/>
+  </imagelayer>
+  <imagelayer id="12" name="ghwater2" offsetx="0" offsety="92" parallaxx="1.4" repeatx="1">
+   <image source="../../../assets/sprites/world/maps/emerset/background/ghwater2.png" width="775" height="75"/>
+  </imagelayer>
+  <imagelayer id="11" name="ghwater1" offsetx="0" offsety="194" parallaxx="1.5" repeatx="1">
+   <image source="../../../assets/sprites/world/maps/emerset/background/ghwater1.png" width="775" height="110"/>
+  </imagelayer>
+  <imagelayer id="9" name="mountain" offsetx="0" offsety="22" parallaxx="1.2" repeatx="1">
+   <image source="../../../assets/sprites/world/maps/emerset/background/mountains.png" width="150" height="44"/>
+  </imagelayer>
+ </group>
+ <layer id="1" name="Tile Layer 1" width="32" height="15">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+35,36,37,35,36,37,35,36,37,35,36,37,35,36,37,35,36,37,35,36,37,35,36,37,35,36,37,35,36,37,35,36,
+51,52,53,51,52,53,67,68,69,51,52,53,51,52,53,51,52,53,51,52,53,51,52,53,51,52,53,51,52,53,51,52,
+67,68,69,67,68,69,67,68,69,67,68,69,67,68,69,67,68,69,67,68,69,67,68,69,67,68,69,67,68,69,67,68,
+83,84,85,83,84,85,83,84,85,83,84,85,83,84,85,83,84,85,83,84,85,83,84,85,83,84,85,83,84,85,83,84,
+99,100,101,99,100,101,99,100,101,99,100,101,99,100,101,99,100,101,99,100,101,99,100,101,99,100,101,99,100,101,99,100,
+147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147,147
+</data>
+ </layer>
+ <objectgroup color="#0000fa" id="3" name="collision">
+  <object id="2" x="0" y="224" width="1024" height="64"/>
+  <object id="3" x="0" y="448" width="1024" height="32"/>
+ </objectgroup>
+ <objectgroup color="#fa00fa" id="6" name="objects"/>
+ <objectgroup color="#fa00fa" id="7" name="markers">
+  <object id="1" name="spawn" x="319.94" y="368.503">
+   <point/>
+  </object>
+ </objectgroup>
+</map>
