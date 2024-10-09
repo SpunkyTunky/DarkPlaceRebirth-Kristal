@@ -2,6 +2,29 @@
 ---@overload fun(...) : DebugSystem
 local DebugSystem, super = Class(Object)
 
+local function replenish()
+    if Game.battle then
+        for _,party in ipairs(Game.battle.party) do
+            party:heal(math.huge)
+        end
+    else
+        for i, chara in ipairs(Game.party) do
+            local prev_health = chara:getHealth()
+            chara:heal(math.huge, false)
+            local amount = chara:getHealth() - prev_health
+
+            if not Game:isLight() and Game.world.healthbar then
+                local actionbox = Game.world.healthbar.action_boxes[i]
+                local text = HPText("+" .. amount, Game.world.healthbar.x + actionbox.x + 69, Game.world.healthbar.y + actionbox.y + 15)
+                text.layer = WORLD_LAYERS["ui"] + 1
+                Game.world:addChild(text)
+            end
+        end
+
+        Assets.stopAndPlaySound("power")
+    end
+end
+
 function DebugSystem:init()
     super.init(self, 0, 0)
     self.layer = 10000000 - 2
@@ -314,7 +337,8 @@ end
 function DebugSystem:refresh()
     self.menus = {}
     self.exclusive_menus = {}
-    self.exclusive_menus["OVERWORLD"] = {"encounter_select", "select_shop", "select_map", "cutscene_select"}
+    self.exclusive_menus["OVERWORLD"] = {"encounter_select", "select_shop", "select_map", "cutscene_select", "legend_select"}
+    self.exclusive_menus["LEGEND"] = {"legend_select"}
     self.exclusive_menus["BATTLE"] = {"wave_select"}
     self:registerMenu("main", "~ KRISTAL DEBUG ~")
     self.current_menu = "main"
@@ -485,26 +509,12 @@ function DebugSystem:registerSubMenus()
                         function ()
                             Kristal.Config["fps"] = 0; FRAMERATE = 0
                         end)
-    self:registerOption("engine_option_fps", "30", "Set the target FPS to 30.",
-                        function ()
-                            Kristal.Config["fps"] = 30; FRAMERATE = 30
-                        end)
-    self:registerOption("engine_option_fps", "60", "Set the target FPS to 60.",
-                        function ()
-                            Kristal.Config["fps"] = 60; FRAMERATE = 60
-                        end)
-    self:registerOption("engine_option_fps", "120", "Set the target FPS to 120.",
-                        function ()
-                            Kristal.Config["fps"] = 120; FRAMERATE = 120
-                        end)
-    self:registerOption("engine_option_fps", "144", "Set the target FPS to 144.",
-                        function ()
-                            Kristal.Config["fps"] = 144; FRAMERATE = 144
-                        end)
-    self:registerOption("engine_option_fps", "240", "Set the target FPS to 240.",
-                        function ()
-                            Kristal.Config["fps"] = 240; FRAMERATE = 240
-                        end)
+    for _,fps in ipairs({30, 60, 120, 144, 165, 240}) do
+        self:registerOption("engine_option_fps", fps, "Set the target FPS to "..fps..".",
+                            function ()
+                                Kristal.Config["fps"] = fps; FRAMERATE = fps
+                            end)
+    end
     self:registerOption("engine_option_fps", "Custom", "Set the target FPS to a custom value.", function ()
         self.window = DebugWindow("Enter FPS", "Enter the target FPS youd like.", "input", function (text)
             local fps = tonumber(text)
@@ -517,6 +527,18 @@ function DebugSystem:registerSubMenus()
         self:addChild(self.window)
     end)
     self:registerOption("engine_option_fps", "Back", "Go back to the previous menu.", function () self:returnMenu() end)
+    
+    self:registerMenu("fast_forward", "Fast Forward")
+    self:registerOption("fast_forward", "[Toggle]", 
+                        function () return self:appendBool("Speed up the engine.", FAST_FORWARD) end,
+                        function () FAST_FORWARD = not FAST_FORWARD end)
+    for _,speed in ipairs({0.05, 0.1, 0.2, 0.5, 1.5, 2, 5, 10}) do
+        self:registerOption("fast_forward", "x"..speed, "Set the fast forward speed to x"..speed.." multiplier.",
+                            function ()
+                                FAST_FORWARD_SPEED = speed
+                            end)
+    end
+    self:registerOption("fast_forward", "Back", "Go back to the previous menu.", function () self:returnMenu() end)
 
     self:registerMenu("give_item", "Give Item", "search")
 
@@ -558,6 +580,14 @@ function DebugSystem:registerSubMenus()
         end)
     end
 
+    self:registerMenu("minigame_select", "Minigame Select", "search")
+    for id,_ in pairs(Registry.minigames) do
+        self:registerOption("minigame_select", id, "Start this minigame.", function()
+            Game:startMinigame(id)
+            self:closeMenu()
+        end, in_overworld)
+    end
+
     self:registerMenu("cutscene_select", "Cutscene Select", "search")
     -- loop through registry and add menu options for all cutscenes
     for group, cutscene in pairs(Registry.world_cutscenes) do
@@ -574,6 +604,26 @@ function DebugSystem:registerSubMenus()
                 self:closeMenu()
             end)
         end
+    end
+
+    self:registerMenu("legend_select", "Legend Select", "search")
+
+    -- add a legend stopper
+    self:registerOption("legend_select", "[Stop Current Legend]", "Stop the current playing Legend.", function ()
+        if Game.state == "LEGEND" then
+            Game.legend.cutscene:onEnd()
+        end
+        self:closeMenu()
+    end)
+
+    -- loop through registry and add menu options for all legends
+    for cutscene, _ in pairs(Registry.legend_cutscenes) do
+        self:registerOption("legend_select", cutscene, "Start this legend.", function ()
+            if Game.state ~= "LEGEND" then
+                Game:fadeIntoLegend(cutscene)
+            end
+            self:closeMenu()
+        end)
     end
 
     self:registerMenu("wave_select", "Wave Select", "search")
@@ -630,13 +680,27 @@ function DebugSystem:registerSubMenus()
             else
                 Game:addPartyMember(id)
                 if Game.world.player then
-                    Game.world:spawnFollower(Game.party_data[id]:getActor())
+                    Game.world:spawnFollower(Game.party_data[id]:getActor(), {party = id})
                 else
                     local x, y = Game.world.camera:getPosition()
-                    Game.world:spawnPlayer(x, y, Game.party_data[id]:getActor())
+                    Game.world:spawnPlayer(x, y, Game.party_data[id]:getActor(), id)
                 end
             end
         end)
+    end
+    
+    self:registerMenu("border_menu", "Border Test", "search")
+    
+    local borders = Utils.getFilesRecursive("assets/sprites/borders", ".png")
+    if Mod then
+        Utils.merge(borders, Utils.getFilesRecursive(Mod.info.path.."/assets/sprites/borders", ".png"))
+        for _,mod_lib in pairs(Mod.libs) do
+            Utils.merge(borders, Utils.getFilesRecursive(mod_lib.info.path.."/assets/sprites/borders", ".png"))
+        end
+    end
+
+    for _,border in ipairs(Utils.removeDuplicates(borders)) do
+        self:registerOption("border_menu", border, "Switch to the border \"" .. border .. "\".", function() Game:setBorder(border) end)
     end
 end
 
@@ -644,6 +708,8 @@ function DebugSystem:registerDefaults()
     local in_game = function () return Kristal.getState() == Game end
     local in_battle = function () return in_game() and Game.state == "BATTLE" end
     local in_overworld = function () return in_game() and Game.state == "OVERWORLD" end
+    local in_legend = function() return in_game() and Game.state == "LEGEND" end
+    local in_minigame = function() return in_game() and Game.state == "MINIGAME" end
 
     -- Global
     self:registerConfigOption("main", "Object Selection Pausing",
@@ -701,6 +767,15 @@ function DebugSystem:registerDefaults()
     self:registerOption("main", "Change Party", "Enter the party change menu.", function ()
                             self:enterMenu("change_party", 0)
                         end, in_game)
+                        
+    self:registerOption("main", "Border Test", "Enter the border test menu.", function() 
+                            self:enterMenu("border_menu", 0)
+                        end, function() return in_game() and Kristal.Config["borders"] == "dynamic" end)
+
+    self:registerOption("main", "Replenish Party", "Replenishes health.", 
+                        replenish, 
+                        in_game
+    )
 
     -- World specific
     self:registerOption("main", "Select Map", "Switch to a new map.", function ()
@@ -714,10 +789,17 @@ function DebugSystem:registerDefaults()
     self:registerOption("main", "Enter Shop", "Enter a shop.", function ()
                             self:enterMenu("select_shop", 0)
                         end, in_overworld)
+    self:registerOption("main", "Start Minigame", "Start a minigame.", function ()
+                            self:enterMenu("minigame_select", 0)
+                        end, in_overworld)
 
     self:registerOption("main", "Play Cutscene", "Play a cutscene.", function ()
                             self:enterMenu("cutscene_select", 0)
                         end, in_overworld)
+
+    self:registerOption("main", "Play Legend", "Play a legend cutscene.", function ()
+                            self:enterMenu("legend_select", 0)
+                        end, function() return in_overworld() or in_legend() end)
 
     -- Battle specific
     self:registerOption("main", "Start Wave", "Start a wave.", function ()
@@ -727,6 +809,12 @@ function DebugSystem:registerDefaults()
     self:registerOption("main", "End Battle", "Instantly complete a battle.", function ()
                             Game.battle:setState("VICTORY")
                         end, in_battle)
+
+    -- Minigame specific
+    self:registerOption("main", "End Minigame", "End the current minigame.", function()
+                            Game.minigame:endMinigame()
+                            self:closeMenu()
+                        end, in_minigame)
 end
 
 function DebugSystem:getValidOptions()

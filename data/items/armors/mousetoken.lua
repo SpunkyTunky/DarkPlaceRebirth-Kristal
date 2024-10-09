@@ -14,7 +14,7 @@ function item:init()
     -- Battle description
     self.effect = ""
     -- Shop description
-    self.shop = ""
+    self.shop = "Magic up. It\nlooks cool!"
     -- Menu description
     self.description = "A golden coin with a once-powerful mousewizard engraved on it."
 
@@ -52,6 +52,13 @@ function item:init()
         jamm = "This brings back memories.",
         noel = "Is this from a resturant?",
     }
+end
+
+function item:getReaction(user_id, reactor_id)
+    if user_id == "jamm" and reactor_id == user_id and Game:getFlag("marcy_joined") then
+		return "Marcy wants to go there! // Maybe soon, Marcy."
+	end
+	return super.getReaction(self, user_id, reactor_id)
 end
 
 return item

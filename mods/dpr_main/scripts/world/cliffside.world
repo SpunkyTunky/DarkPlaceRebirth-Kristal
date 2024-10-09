@@ -9,10 +9,10 @@
         },
         {
             "fileName": "maps/grey_cliffside/cliffside_start/cliffside_start.tmx",
-            "height": 480,
+            "height": 960,
             "width": 640,
             "x": 1200,
-            "y": 0
+            "y": -480
         },
         {
             "fileName": "maps/grey_cliffside/cliffside_right_2.tmx",
@@ -20,6 +20,13 @@
             "width": 1200,
             "x": 2080,
             "y": 760
+        },
+        {
+            "fileName": "maps/grey_cliffside/dead_room1.tmx",
+            "height": 960,
+            "width": 800,
+            "x": 1040,
+            "y": -1520
         }
     ],
     "onlyShowAdjacentMaps": false,

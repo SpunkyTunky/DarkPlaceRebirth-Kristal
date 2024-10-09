@@ -24,9 +24,25 @@ if not HOTSWAPPING then
 
         message = ""
     }
+    
+function Kristal.reloadnoel()
+    -- If you don't know what this is for, then don't touch it!!!
+    
+    package.loaded["src.engine.game.noel.noel_spawn"] = nil 
+    Noel = require("src.engine.game.noel.noel_spawn")      
+    if Noel:loadNoel() then
+        Kristal.noel = true
+    else 
+        Kristal.noel = false
+    end
+end
+
+Kristal.reloadnoel()
+
 end
 
 function love.load(args)
+    Kristal.reloadnoel()
     --[[
         Launch args:
             --wait: Pauses the load screen until a key is pressed
@@ -98,6 +114,7 @@ function love.load(args)
     Kristal.ChapterConfigs = {}
     Kristal.ChapterConfigs[1] = JSON.decode(love.filesystem.read("configs/chapter1.json"))
     Kristal.ChapterConfigs[2] = JSON.decode(love.filesystem.read("configs/chapter2.json"))
+    Kristal.ExtraConfigs = JSON.decode(love.filesystem.read("configs/extra.json"))
 
     -- register gamestate calls
     Gamestate.registerEvents()
@@ -115,6 +132,9 @@ function love.load(args)
     PERFORMANCE_TEST = nil
     ---@type string|nil
     PERFORMANCE_TEST_STAGE = nil
+
+    SCREENSHOT_DISPLAY = 1
+    TAKING_SCREENSHOT = false
 
     -- setup hooks
     Utils.hook(love, "update", function (orig, ...)
@@ -205,6 +225,17 @@ function love.load(args)
             PERFORMANCE_TEST_STAGE = nil
             PERFORMANCE_TEST = nil
         end
+
+        local screenshot_size = Utils.lerp(20, 0, SCREENSHOT_DISPLAY)
+        if screenshot_size > 0 and not TAKING_SCREENSHOT then
+            local w = love.graphics.getWidth()
+            local h = love.graphics.getHeight()
+            love.graphics.rectangle("fill", 0, 0, screenshot_size, h)
+            love.graphics.rectangle("fill", w - screenshot_size, 0, screenshot_size, h)
+            love.graphics.rectangle("fill", 0, 0, w, screenshot_size)
+            love.graphics.rectangle("fill", 0, h - screenshot_size, w, screenshot_size)
+        end
+        TAKING_SCREENSHOT = false
     end)
 
     -- start load thread
@@ -280,6 +311,8 @@ function love.update(dt)
     Music.update()
     Assets.update()
     TextInput.update()
+
+    SCREENSHOT_DISPLAY = Utils.approach(SCREENSHOT_DISPLAY, 1, 4 * dt)
 
     if Kristal.Loader.waiting > 0 then
         while Kristal.Loader.out_channel:getCount() > 0 do
@@ -411,6 +444,13 @@ function Kristal.onKeyPressed(key, is_repeat)
         elseif key == "f8" then
             print("Hotswapping files...\nNOTE: Might be unstable. If anything goes wrong, it's not our fault :P")
             Hotswapper.scan()
+        elseif key == "f9" then
+            love.filesystem.createDirectory("screenshots")
+            love.graphics.captureScreenshot("screenshots/" .. os.time() .. "-" .. RUNTIME .. ".png")
+            love.system.vibrate(0.1)
+            Assets.playSound("camera_flash")
+            SCREENSHOT_DISPLAY = 0
+            TAKING_SCREENSHOT = true
         elseif key == "r" and Input.ctrl() and not console_open then
             if Kristal.getModOption("hardReset") or Input.alt() and Input.shift() then
                 love.event.quit("restart")
@@ -427,6 +467,9 @@ function Kristal.onKeyPressed(key, is_repeat)
                     Kristal.returnToMenu()
                 end
             end
+        elseif key == "m" and Input.ctrl() and not console_open then
+            Kristal.reloadnoel()
+            print("reloaded noel_spawn.lua")
         end
     end
 
@@ -899,6 +942,8 @@ function Kristal.clearModState()
     -- Restore assets and registry
     Assets.restoreData()
     Registry.initialize()
+
+    Kristal.reloadnoel()
 end
 
 --- Exits the current mod and returns to the Kristal menu.
@@ -928,7 +973,7 @@ end
 ---| "none" # Fully reloads the mod from the start of the game.
 function Kristal.quickReload(mode)
     -- Temporarily save game variables
-    local save, save_id, encounter, shop
+    local save, save_id, encounter, shop, minigame
     if mode == "temp" then
         Kristal.temp_save = true
         save = Game:save()
@@ -1131,7 +1176,6 @@ function Kristal.startGameDPR(save_id, save_name, after)
 end
 
 -- Loads into the provided mod with the current save slot.
--- TODO: Allow setting spawn position.
 ---@param use_lame_fadeout boolean|string? # DO NOT USE, work in progress.
 function Kristal.swapIntoMod(id, use_lame_fadeout, ...)
     --this is for noel, so they dont save their file for a possible armor dupe
@@ -1143,8 +1187,8 @@ function Kristal.swapIntoMod(id, use_lame_fadeout, ...)
         print("WARNING: DLC " .. id .. " is not installed.")
     end
 
-    local save_id = Game and Game.save_id or 1
-    local save = Game and Game:save() or Kristal.getSaveFile(save_id)
+    local save_id = Game.started and Game.save_id or 1
+    local save = Game.started and Game:save() or Kristal.getSaveFile(save_id)
     local map_args = {...}
     local map = table.remove(map_args, 1)
     local marker, x, y, facing
@@ -1486,10 +1530,18 @@ end
 ---@param fade? boolean Whether the game should fade in after loading. (Defaults to `false`)
 function Kristal.loadGame(id, fade)
     id = id or Game.save_id
-    local path = "saves" .. "/file_" .. id .. ".json"
-    if love.filesystem.getInfo(path) then
-        local data = JSON.decode(love.filesystem.read(path))
-        Game:load(data, id, fade)
+    local data = Kristal.getSaveFile(id)
+    if data then
+        assert(Mod)
+        if data.mod == Mod.info.id then
+            Game:load(data, id, fade)
+        else
+            Gamestate.switch({})
+            Kristal.clearModState()
+            Kristal.loadAssets("", "mods", "", function()
+                Kristal.startGameDPR(id, data.name)
+            end)
+        end
     else
         Game:load(nil, id, fade)
     end

@@ -1,3 +1,6 @@
+modRequire("scripts/main/warp_bin")
+modRequire("scripts/main/utils_general")
+
 function Mod:init()
     print("Loaded "..self.info.name.."!")
 end
@@ -50,4 +53,17 @@ end
 
 function Mod:getGlobalNextLv()
     return Utils.clamp(Kristal.callEvent("getGlobalNextLvRequiredEXP") - Game:getFlag("library_experience"), 0, 99999)
+end
+
+function Mod:createQuest(name, id, desc, progress_max, silent)
+    if not silent and Game.stage then
+        Game.stage:addChild(QuestCreatedPopup(name))
+    end
+end
+
+function Mod:onTextSound(sound, node)
+    if sound == "noel" then
+        Assets.playSound("voice/noel/"..string.lower(node.character), 1, 1)
+        return true
+    end
 end

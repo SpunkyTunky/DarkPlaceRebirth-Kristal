@@ -50,6 +50,8 @@
 ---@field can_move          boolean         Whether the player is able to move the soul
 ---@field allow_focus       boolean         Whether the player is able to focus with the soul (hold Cancel key for 1/2 speed)
 ---
+---@field target_alpha      number?         The target alpha of the soul
+---
 ---@overload fun(x?:number, y?:number, color?: table) : Soul
 local Soul, super = Class(Object)
 
@@ -130,6 +132,8 @@ function Soul:init(x, y, color)
 
     self.can_move = true
     self.allow_focus = true
+
+    self.target_alpha = nil
 end
 
 ---@param parent Object
@@ -398,7 +402,7 @@ end
 --- *(Override)* Called when the soul takes damage
 ---@param bullet Bullet
 ---@param amount integer
-function Soul:onDamage(bullet, amount)
+function Soul:onDamage(bullet, amount, mhp)
     -- Can be overridden, called when the soul actually takes damage from a bullet
 end
 

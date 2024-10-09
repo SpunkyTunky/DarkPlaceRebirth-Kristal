@@ -1,3 +1,4 @@
+--- The character controlled by the player when in the Overworld.
 ---@class Player : Character
 ---@overload fun(...) : Player
 local Player, super = Class(Character)
@@ -50,6 +51,8 @@ function Player:init(chara, x, y)
     outlinefx:setAlpha(self.battle_alpha)
 
     self.outlinefx = self:addFX(outlinefx)
+	
+	self.disable_running = false
 end
 
 function Player:getDebugInfo()
@@ -57,6 +60,7 @@ function Player:getDebugInfo()
     table.insert(info, "State: " .. self.state_manager.state)
     table.insert(info, "Walk speed: " .. self.walk_speed)
     table.insert(info, "Run timer: " .. self.run_timer)
+    table.insert(info, "Can run: " .. (self.disable_running and "False" or "True"))
     table.insert(info, "Hurt timer: " .. self.hurt_timer)
     table.insert(info, "Slide in place: " .. (self.slide_in_place and "True" or "False"))
     return info
@@ -216,6 +220,8 @@ function Player:handleMovement()
     if self.force_run and not self.force_walk then
         self.run_timer = 200
     end
+	
+	if self.disable_running then running = false end
 
     local speed = self.walk_speed
     if running then
@@ -227,6 +233,8 @@ function Player:handleMovement()
             speed = speed + 2
         end
     end
+	
+	if self.disable_running then speed = self.walk_speed end
 
     self:move(walk_x, walk_y, speed * DTMULT)
 

@@ -120,6 +120,7 @@ ActorSprite = require("src.engine.game.common.actorsprite")
 Inventory = require("src.engine.game.common.inventory")
 DarkInventory = require("src.engine.game.common.darkinventory")
 LightInventory = require("src.engine.game.common.lightinventory")
+LancerKeyItem = require("src.engine.game.common.lancerkeyitem")
 
 Cutscene = require("src.engine.game.common.cutscene")
 WorldCutscene = require("src.engine.game.world.worldcutscene")
@@ -151,6 +152,14 @@ Nametag = require("src.engine.game.world.nametag")
 InputMenu = require("src.engine.game.world.inputmenu")
 
 MinigameHandler = require("src.engine.game.minigames.minigamehandler")
+
+AngryBirds = require("src.engine.game.minigames.angrybirds.angrybirds")
+AngryBirdsButton = require("src.engine.game.minigames.angrybirds.angrybirdsbutton")
+AngryBirdsCredits = require("src.engine.game.minigames.angrybirds.angrybirdscredits")
+AngryBirdsMainMenu = require("src.engine.game.minigames.angrybirds.angrybirdsmainmenu")
+AngryBirdsPopup = require("src.engine.game.minigames.angrybirds.angrybirdspopup")
+AngryBirdsUIBox = require("src.engine.game.minigames.angrybirds.angrybirdsuibox")
+
 BallJump = require("src.engine.game.minigames.balljump.balljump")
 BallJumpEntity = require("src.engine.game.minigames.balljump.balljumpentity")
 BallJumpBackChuck = require("src.engine.game.minigames.balljump.balljumpbackchuck")

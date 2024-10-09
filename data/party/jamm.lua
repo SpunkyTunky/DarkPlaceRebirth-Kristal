@@ -14,7 +14,7 @@ function character:init()
     self.level = 1
     self.title = "Slingshotter\nTakes aim, then\nfires"
 
-    self.soul_priority = 0
+    self.soul_priority = 1
     self.soul_color = {1, 106/255, 0}
 
     if Game:getFlag("jamm_canact") then
@@ -86,6 +86,10 @@ function character:init()
     self.menu_icon_offset = nil
 
     self.gameover_message = nil
+	
+	self.flee_text = {
+		"[voice:jamm][facec:jamm/nervous]Nope! I'm out!"
+	}
 end
 
 function character:getActor(light)
@@ -144,6 +148,22 @@ function character:drawPowerStat(index, x, y, menu)
         
         return true
     end
+end
+
+function character:getFleeText()
+	if Game:getFlag("marcy_joined") then
+		if Game:getFlag("marcy_pirate") then
+			return {
+				"[voice:jamm][facec:jamm/nervous]Nope! I'm out!",
+				"[voice:marcy][facec:marcy/frown_open_patch]Marcy thinks we should go!"
+			}
+		end
+		return {
+			"[voice:jamm][facec:jamm/nervous]Nope! I'm out!",
+			"[voice:marcy][facec:marcy/frown_open]Marcy thinks we should go!"
+		}
+	end
+	return self.flee_text
 end
 
 return character

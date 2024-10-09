@@ -1,3 +1,4 @@
+--- A type of inventory used to store items in the Light World.
 ---@class LightInventory : Inventory
 ---@overload fun(...) : LightInventory
 local LightInventory, super = Class(Inventory)
@@ -33,11 +34,22 @@ function LightInventory:clear()
     Kristal.callEvent(KRISTAL_EVENT.createLightInventory, self)
 end
 
+---@return DarkInventory
 function LightInventory:convertToDark()
     local new_inventory = DarkInventory()
 
     local was_storage_enabled = new_inventory.storage_enabled
     new_inventory.storage_enabled = true
+
+    for k,storage in pairs(self:getDarkInventory().storages) do
+        for i = 1, storage.max do
+            if storage[i] then
+                if not new_inventory:addItemTo(storage.id, i, storage[i]) then
+                    new_inventory:addItem(storage[i])
+                end
+            end
+        end
+    end
 
     Kristal.callEvent(KRISTAL_EVENT.onConvertToDark, new_inventory)
 
@@ -51,47 +63,53 @@ function LightInventory:convertToDark()
                 if result then
                     self:removeItem(item)
 
-                    if type(result) == "string" then
-                        result = Registry.createItem(result)
-                    end
-                    if isClass(result) then
-                        new_inventory:addItem(result)
+                    if not isClass(result) and type(result) == "table" then
+                        for _,item in ipairs(result) do
+                            if type(item) == "string" then
+                                item = Registry.createItem(item)
+                            end
+                            if isClass(item) then
+                                new_inventory:addItem(item)
+                            end
+                        end
+                    else
+                        if type(result) == "string" then
+                            result = Registry.createItem(result)
+                        end
+                        if isClass(result) then
+                            new_inventory:addItem(result)
+                        end
                     end
                 end
             end
         end
     end
 
-    for _,base_storage in pairs(self.storages) do
-        local storage = Utils.copy(base_storage)
-        for i = 1, storage.max do
-            local item = storage[i]
-            if item then
-                item.light_item = item
-                item.light_location = {storage = storage.id, index = i}
-
-                new_inventory:addItemTo("light", item)
-
-                self:removeItem(item)
-            end
-        end
-    end
-
     new_inventory.storage_enabled = was_storage_enabled
+    
+    Game.light_inventory = self
 
     return new_inventory
 end
 
+--- Gets the Dark World inventory
+---@return DarkInventory
 function LightInventory:getDarkInventory()
-    local junk_ball = self:getItemByID("light/ball_of_junk")
-
-    if not junk_ball then
-        junk_ball = self:addItem("light/ball_of_junk")
+    if not self:hasItem("light/ball_of_junk") then
+        self:addItem("light/ball_of_junk")
     end
-
-    return junk_ball.inventory
+    
+    return Game.dark_inventory
 end
 
+--- Gets the Light World inventory
+---@return LightInventory
+function LightInventory:getLightInventory()
+    return self
+end
+
+---@param item_type string|Item
+---@return table storage
 function LightInventory:getDefaultStorage(item_type)
     if isClass(item_type) then -- Passing in an item
         item_type = item_type.type
@@ -101,6 +119,8 @@ end
 
 -- Item give overrides for Dark World items
 
+---@param item              Item|string
+---@param ignore_dark?      boolean     Whether to add the item to this inventory even if it is a Dark item
 ---@return Item|nil
 function LightInventory:addItem(item, ignore_dark)
     if type(item) == "string" then
@@ -114,6 +134,10 @@ function LightInventory:addItem(item, ignore_dark)
     end
 end
 
+---@param item              string|Item
+---@param ignore_dark?      boolean     Whether to add the item to this inventory even if it is a Dark item
+---@return boolean success      Whether the item was successfully picked up
+---@return string result_text   The text that should be displayed
 function LightInventory:tryGiveItem(item, ignore_dark)
     if type(item) == "string" then
         item = Registry.createItem(item)

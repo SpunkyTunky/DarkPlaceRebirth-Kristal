@@ -49,6 +49,8 @@ function Item:init()
     self.bonus_name = nil
     self.bonus_icon = nil
 
+    self.turn_heal = 0
+
     -- The color of the bonus icon, always orange in DELTARUNE
     self.bonus_color = PALETTE["world_ability_icon"]
 
@@ -97,7 +99,20 @@ function Item:onLoad(data) end
 
 -- Light world / Dark world stuff
 function Item:onCheck()
-    Game.world:showText("* \""..self:getName().."\" - "..self:getCheck())
+    if type(self:getCheck()) == "table" then
+        local text
+        for i, check in ipairs(self:getCheck()) do
+            if i > 1 then
+                if text == nil then
+                    text = {}
+                end
+                table.insert(text, check)
+            end
+        end
+        Game.world:showText({{"* \""..self:getName().."\" - "..(self:getCheck()[1] or "")}, text})
+    else
+        Game.world:showText("* \""..self:getName().."\" - "..self:getCheck())
+    end
 end
 function Item:onToss()
     if Game:isLight() then

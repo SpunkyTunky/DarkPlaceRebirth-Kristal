@@ -142,6 +142,22 @@ function Battle:init()
 	self.superpower = false
 
 	self.super_timer = 0
+
+    self.month = tonumber(os.date("%m"))
+    self.day = tonumber(os.date("%d"))
+
+    if self.month == 10 and self.day == 31 then
+        local skeledance = Sprite("battle/skeledance/skeledance", SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
+        skeledance:setOrigin(0.5)
+        skeledance:setColor(self.color)
+	    skeledance:play(1/15, true)
+	    skeledance:setScale(5, 2)
+        skeledance.alpha = 7/255
+        skeledance.debug_select = false
+	    self:addChild(skeledance)
+
+	    skeledance.layer = BATTLE_LAYERS["bottom"]
+    end
 end
 
 function Battle:createPartyBattlers()
@@ -504,7 +520,8 @@ function Battle:onStateChange(old,new)
             battler.action = nil
 
             battler.chara:resetBuffs()
-
+            battler.chara:restoreMaxHealth()
+            
             if battler.chara:getHealth() <= 0 then
                 battler:revive()
                 battler.chara:setHealth(battler.chara:autoHealAmount())
@@ -546,13 +563,20 @@ function Battle:onStateChange(old,new)
         if self.used_violence and Game:getConfig("growStronger") then
             local stronger = "You"
 
+            local party_to_lvl_up = {}
             for _,battler in ipairs(self.party) do
-                Game.level_up_count = Game.level_up_count + 1
-                battler.chara:onLevelUp(Game.level_up_count)
-
-                if battler.chara.id == Game:getConfig("growStrongerChara") then
+                table.insert(party_to_lvl_up, battler.chara)
+                if Game:getConfig("growStrongerChara") and battler.chara.id == Game:getConfig("growStrongerChara") then
                     stronger = battler.chara:getName()
                 end
+                for _,id in pairs(battler.chara:getStrongerAbsent()) do
+                    table.insert(party_to_lvl_up, Game:getPartyMember(id))
+                end
+            end
+            
+            for _,party in ipairs(Utils.removeDuplicates(party_to_lvl_up)) do
+                Game.level_up_count = Game.level_up_count + 1
+                party:onLevelUp(Game.level_up_count)
             end
 
             win_text = "* You won!\n* Got " .. self.money .. " "..Game:getConfig("darkCurrencyShort")..".\n* "..stronger.." became stronger."
@@ -780,7 +804,7 @@ function Battle:onStateChange(old,new)
 		}
 		
         for _,battler in pairs(Game.battle.party) do
-            for _,text in pairs(battler.chara.flee_text) do
+            for _,text in pairs(battler.chara:getFleeText()) do
                 table.insert(flee_list, text)
             end
         end
@@ -1180,9 +1204,12 @@ function Battle:processAction(action)
                 else
                     dmg_sprite:setScale(2, 2)
                 end
-                dmg_sprite:setPosition(enemy:getRelativePos(enemy.width/2, enemy.height/2))
+                local relative_pos_x, relative_pos_y = enemy:getRelativePos(enemy.width/2, enemy.height/2)
+                dmg_sprite:setPosition(relative_pos_x + enemy.dmg_sprite_offset[1], relative_pos_y + enemy.dmg_sprite_offset[2])
                 dmg_sprite.layer = enemy.layer + 0.01
-                dmg_sprite:play(1/15, false, function(s) s:remove() end)
+                dmg_sprite.battler_id = action.character_id or nil
+                table.insert(enemy.dmg_sprites, dmg_sprite)
+                dmg_sprite:play(1/15, false, function(s) s:remove(); Utils.removeFromTable(enemy.dmg_sprites, dmg_sprite) end) -- Remove itself and Remove the dmg_sprite from the enemy's dmg_sprite table when its removed
                 enemy.parent:addChild(dmg_sprite)
 
                 local sound = enemy:getDamageSound() or "damage"
@@ -1952,11 +1979,9 @@ function Battle:getPartyFromTarget(target)
 end
 
 function Battle:hurt(amount, exact, target)
-    -- Note: 0, 1 and 2 are to target a specific party member.
-    -- In Kristal, we'll allow them to be objects as well.
-    -- Also in Kristal, they're 1, 2 and 3.
-    -- 3 is "ALL" in Kristal,
-    -- while 4 is "ANY".
+    -- If target is a numberic value, it will hurt the party battler with that index
+    -- "ANY" will choose the target randomly
+    -- "ALL" will hurt the entire party all at once
     target = target or "ANY"
 
     -- Alright, first let's try to adjust targets.
@@ -2018,16 +2043,88 @@ function Battle:hurt(amount, exact, target)
 
     if target == "ALL" then
         Assets.playSound("hurt")
-        for _,battler in ipairs(self.party) do
-            if not battler.is_down then
-                battler:hurt(amount, exact, nil, {all = true})
-            end
+        local alive_battlers = Utils.filter(self.party, function(battler) return not battler.is_down end)
+        for _,battler in ipairs(alive_battlers) do
+            battler:hurt(amount, exact, nil, {all = true})
         end
         -- Return the battlers who aren't down, aka the ones we hit.
-        return Utils.filter(self.party, function(item) return not item.is_down end)
+        return alive_battlers
     end
 end
 
+function Battle:mhp_hurt(amount, exact, target)
+    -- If target is a numberic value, it will hurt the party battler with that index
+    -- "ANY" will choose the target randomly
+    -- "ALL" will hurt the entire party all at once
+    target = target or "ANY"
+
+    -- Alright, first let's try to adjust targets.
+
+    if type(target) == "number" then
+        target = self.party[target]
+    end
+
+    if isClass(target) and target:includes(PartyBattler) then
+        if (not target) or (target.chara:getHealth() <= 0) then -- Why doesn't this look at :canTarget()? Weird.
+            target = self:randomTargetOld()
+        end
+    end
+
+    if target == "ANY" then
+        target = self:randomTargetOld()
+
+        -- Calculate the average HP of the party.
+        -- This is "scr_party_hpaverage", which gets called multiple times in the original script.
+        -- We'll only do it once here, just for the slight optimization. This won't affect accuracy.
+
+        -- Speaking of accuracy, this function doesn't work at all!
+        -- It contains a bug which causes it to always return 0, unless all party members are at full health.
+        -- This is because of a random floor() call.
+        -- I won't bother making the code accurate; all that matters is the output.
+
+        local party_average_hp = 1
+
+        for _,battler in ipairs(self.party) do
+            if battler.chara:getStat("health") ~= battler.chara:getStat("health_def") then
+                party_average_hp = 0
+                break
+            end
+        end
+
+        -- Retarget... twice.
+        if target.chara:getStat("health") / target.chara:getStat("health_def") < (party_average_hp / 2) then
+            target = self:randomTargetOld()
+        end
+        if target.chara:getStat("health") / target.chara:getStat("health_def") < (party_average_hp / 2) then
+            target = self:randomTargetOld()
+        end
+
+        -- If we landed on Kris (or, well, the first party member), and their health is low, retarget (plot armor lol)
+        if (target == self.party[1]) and ((target.chara:getStat("health") / target.chara:getStat("health_def")) < 0.35) then
+            target = self:randomTargetOld()
+        end
+
+        -- They got hit, so un-darken them
+        target.should_darken = false
+        target.targeted = true
+    end
+
+    -- Now it's time to actually damage them!
+    if isClass(target) and target:includes(PartyBattler) then
+        target:mhp_hurt(amount, exact)
+        return {target}
+    end
+
+    if target == "ALL" then
+        Assets.playSound("hurt")
+        local alive_battlers = Utils.filter(self.party, function(battler) return not battler.is_down end)
+        for _,battler in ipairs(alive_battlers) do
+            battler:mhp_hurt(amount, exact, nil, {all = true})
+        end
+        -- Return the battlers who aren't down, aka the ones we hit.
+        return alive_battlers
+    end
+end
 function Battle:setWaves(waves, allow_duplicates)
     for _,wave in ipairs(self.waves) do
         wave:onEnd(false)
@@ -2412,17 +2509,7 @@ function Battle:update()
             end
         end
         if self.actions_done_timer == 0 and not any_hurt then
-            for _,battler in ipairs(self.attackers) do
-                if not battler:setAnimation("battle/attack_end") then
-                    battler:resetSprite()
-                end
-            end
-            self.attackers = {}
-            self.normal_attackers = {}
-            self.auto_attackers = {}
-            if self.battle_ui.attacking then
-                self.battle_ui:endAttack()
-            end
+            self:resetAttackers()
             if not self.encounter:onActionsEnd() then
                 self:setState("ENEMYDIALOGUE")
             end
@@ -2942,6 +3029,14 @@ function Battle:onKeyPressed(key)
         if self.soul and key == "j" then
             self.soul:shatter(6)
             self:getPartyBattler(Game:getSoulPartyMember().id):hurt(math.huge)
+
+            -- Prevents a crash related to not having a soul in some waves
+            self:spawnSoul(x, y)
+            for _,heartbrust in ipairs(Game.stage:getObjects(HeartBurst)) do
+                heartbrust:remove()
+            end
+            self.soul.visible = false
+            self.soul.collidable = false
         end
         if key == "b" then
             for _,battler in ipairs(self.party) do
@@ -3323,6 +3418,59 @@ function Battle:pierce(amount, exact, target)
         for _,battler in ipairs(self.party) do
             if not battler.is_down then
                 battler:pierce(amount, exact, nil, {all = true})
+            end
+        end
+        -- Return the battlers who aren't down, aka the ones we hit.
+        return Utils.filter(self.party, function(item) return not item.is_down end)
+    end
+end
+
+function Battle:mhp_pierce(amount, exact, target)
+    target = target or "ANY"
+
+
+    if type(target) == "number" then
+        target = self.party[target]
+    end
+
+    if isClass(target) and target:includes(PartyBattler) then
+        if (not target) or (target.chara:getHealth() <= 0) then -- Why doesn't this look at :canTarget()? Weird.
+            target = self:randomTargetOld()
+        end
+    end
+
+    if target == "ANY" then
+        target = self:randomTargetOld()
+
+        local party_average_hp = 1
+
+        for _,battler in ipairs(self.party) do
+            if battler.chara:getStat("health") ~= battler.chara:getStat("health_def") then
+                party_average_hp = 0
+                break
+            end
+        end
+
+        if target.chara:getStat("health") / target.chara:getStat("health_def") < (party_average_hp / 2) then
+            target = self:randomTargetOld()
+        end
+
+        -- They got hit, so un-darken them
+        target.should_darken = false
+        target.targeted = true
+    end
+
+    -- Now it's time to actually damage them!
+    if isClass(target) and target:includes(PartyBattler) then
+        target:mhp_pierce(amount, exact)
+        return {target}
+    end
+
+    if target == "ALL" then
+        Assets.playSound("hurt")
+        for _,battler in ipairs(self.party) do
+            if not battler.is_down then
+                battler:mhp_pierce(amount, exact, nil, {all = true})
             end
         end
         -- Return the battlers who aren't down, aka the ones we hit.

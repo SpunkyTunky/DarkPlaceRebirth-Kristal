@@ -44,9 +44,32 @@ function preview:init(mod, button, menu)
     self.splash = Utils.pick(self.splash_list)
 
     self.splash_timer = 0
+
+    self.music_once = 0
 end
 
 function preview:update()
+
+    local is_options = (MainMenu.state == "OPTIONS")
+        or (MainMenu.state == "DEFAULTNAME")
+        or (MainMenu.state == "CONTROLS")
+    if is_options and self.music_once == 0 then
+
+        self.music_settings = Music("options_starry")
+
+        self.music_once = 1
+
+        MainMenu.music:pause()
+
+    elseif not is_options and self.music_once == 1 then
+        self.music_once = 0
+
+        self.music_settings:remove()
+
+        MainMenu.music:play()
+        
+    end
+
     self.bg_gradient_siner = self.bg_gradient_siner + 0.2 * DTMULT
 
     local particle_to_remove = {}
@@ -126,7 +149,7 @@ function preview:update()
     elseif self.naming_video then
         self.naming_video_fade_phase = 1
     end
-    local mod_music_table = self.menu.mod_list and self.menu.mod_list.music
+    local mod_music_table = self.menu.mod_list and self.menu.mod_list.music 
     if not mod_music_table then mod_music_table = self.menu.mod_music end
     if self.naming_video then
         if self.naming_video_fade_phase == 0 then
