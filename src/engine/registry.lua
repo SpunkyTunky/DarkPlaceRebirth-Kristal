@@ -63,7 +63,8 @@ Registry.paths = {
     ["controllers"]      = "world/controllers",
     ["shops"]            = "shops",
     ["minigames"]        = "minigames",
-    ["combos"]           = "battle/combos"
+    ["combos"]           = "battle/combos",
+    ["quests"]           = "data/quests",
 }
 
 ---@param preload boolean?
@@ -77,6 +78,16 @@ function Registry.initialize(preload)
         for _,path in ipairs(Utils.getFilesRecursive("data", ".lua")) do
             local chunk = love.filesystem.load("data/"..path..".lua")
             self.base_scripts["data/"..path] = chunk
+        end
+
+        for _,path in ipairs(Utils.getFilesRecursive("minigames", ".lua")) do
+            local chunk = love.filesystem.load("minigames/"..path..".lua")
+            self.base_scripts["minigames/"..path] = chunk
+        end
+
+        for _,path in ipairs(Utils.getFilesRecursive("battle", ".lua")) do
+            local chunk = love.filesystem.load("battle/"..path..".lua")
+            self.base_scripts["battle/"..path] = chunk
         end
 
         Registry.initActors()
@@ -102,6 +113,7 @@ function Registry.initialize(preload)
         Registry.initShops()
         Registry.initMinigames()
         Registry.initCombos()
+        Registry.initQuests()
 
         Kristal.callEvent(KRISTAL_EVENT.onRegistered)
     end
@@ -491,6 +503,14 @@ function Registry.createCombo(id, ...)
         return self.combos[id](...)
     else
         error("Attempt to create nonexistent combo \"" .. tostring(id) .. "\"")
+    end
+end
+
+function Registry.createQuest(id, ...)
+    if self.quests[id] then
+        return self.quests[id](...)
+    else
+        error("Attempt to create non existent quest \"" .. tostring(id) .. "\"")
     end
 end
 
@@ -929,6 +949,16 @@ function Registry.initCombos()
         assert(combo ~= nil, '"battle/combos/' .. path .. '.lua" does not return value')
         combo.id = combo.id or path
         self.combos[combo.id] = combo
+    end
+end
+
+function Registry.initQuests()
+    self.quests = {}
+
+    for _,path,quest in self.iterScripts(Registry.paths["quests"]) do
+        assert(quest ~= nil, '"data/quests/' .. path .. '.lua" does not return value')
+        quest.id = quest.id or path
+        self.quests[quest.id] = quest
     end
 end
 

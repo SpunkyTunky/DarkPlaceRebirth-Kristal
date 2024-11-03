@@ -3,6 +3,7 @@ modRequire("scripts/main/utils_general")
 
 function Mod:init()
     print("Loaded "..self.info.name.."!")
+    self:registerShaders()
 end
 
 function Mod:postInit(new_file)
@@ -23,6 +24,10 @@ function Mod:postInit(new_file)
         if Game.save_name == "SUPER" then
             Game.inventory:addItem("chaos_emeralds")
         end
+
+        local baseParty = {}
+        table.insert(baseParty, "hero") -- should be just Hero for now
+        Game:setFlag("_unlockedPartyMembers", baseParty)
 
         Game.world:startCutscene("_main.introcutscene")
     end
@@ -55,15 +60,28 @@ function Mod:getGlobalNextLv()
     return Utils.clamp(Kristal.callEvent("getGlobalNextLvRequiredEXP") - Game:getFlag("library_experience"), 0, 99999)
 end
 
-function Mod:createQuest(name, id, desc, progress_max, silent)
+function Mod:unlockQuest(quest, silent)
     if not silent and Game.stage then
-        Game.stage:addChild(QuestCreatedPopup(name))
+        Game.stage:addChild(QuestCreatedPopup(quest))
     end
 end
 
-function Mod:onTextSound(sound, node)
-    if sound == "noel" then
-        Assets.playSound("voice/noel/"..string.lower(node.character), 1, 1)
-        return true
+function Mod:registerShaders()
+    self.shaders = {}
+    for _,path,shader in Registry.iterScripts("shaders/") do
+        assert(shader ~= nil, '"shaders/'..path..'.lua" does not return value')
+        self.shaders[path] = shader
+    end
+end
+
+function Mod:onBorderDraw(border_sprite)
+    if border_sprite == "cliffside" then
+
+        if math.random(10) == 1 then 
+            love.graphics.setShader(Mod.shaders["glitch"])
+            love.graphics.draw(Assets.getTexture("borders/cliffside"), 0, 0, 0, BORDER_SCALE)
+        end
+
+        love.graphics.setShader() 
     end
 end

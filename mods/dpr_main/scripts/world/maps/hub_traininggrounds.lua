@@ -10,7 +10,7 @@ return {
   tilewidth = 40,
   tileheight = 40,
   nextlayerid = 6,
-  nextobjectid = 14,
+  nextobjectid = 16,
   properties = {},
   tilesets = {
     {
@@ -78,7 +78,7 @@ return {
       properties = {},
       encoding = "lua",
       data = {
-        0, 0, 0, 0, 0, 0, 97, 98, 0, 0, 0, 97, 98, 0, 0, 0, 97, 98, 0, 0,
+        0, 0, 0, 0, 0, 96, 97, 98, 2147483744, 0, 96, 97, 98, 2147483744, 0, 96, 97, 98, 2147483744, 0,
         0, 0, 0, 0, 0, 0, 110, 111, 0, 0, 0, 110, 111, 0, 0, 0, 110, 111, 0, 0,
         0, 0, 0, 0, 0, 0, 123, 124, 0, 0, 0, 123, 124, 0, 0, 0, 123, 124, 0, 0,
         93, 0, 0, 95, 0, 0, 136, 137, 0, 0, 0, 136, 137, 0, 0, 0, 136, 137, 0, 0,
@@ -137,6 +137,22 @@ return {
           properties = {
             ["actor"] = "dummy",
             ["encounter"] = "dummy"
+          }
+        },
+        {
+          id = 15,
+          name = "enemy",
+          type = "",
+          shape = "point",
+          x = 760,
+          y = 520,
+          width = 0,
+          height = 0,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["actor"] = "poseur",
+            ["encounter"] = "poseur"
           }
         }
       }

@@ -47,6 +47,9 @@ function actor:init()
 
     self.voice = "noel"
 
+
+    self.menu_anim = "brella"
+
     self.portrait_path = "face/noel"
 
     self.portrait_offset = {-22, -30}
@@ -101,6 +104,11 @@ function actor:init()
         ["walk/right"] = "walk/right",
     }
 
+end
+
+function actor:onTextSound(node)
+    Assets.playSound("voice/noel/"..string.lower(node.character), 1, 1)
+    return true
 end
 
 return actor

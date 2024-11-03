@@ -36,6 +36,7 @@
 ---@field party             PartyMember[]
 ---@field party_data        PartyMember[]
 ---@field recruits_data     Recruit[]
+---@field quests_data       Quest[]
 ---
 ---@field fader             Fader
 ---@field max_followers     integer
@@ -71,6 +72,7 @@ function Game:clear()
     self.started = false
     self.border = "simple"
     self.swap_into_mod = nil
+    self.total_bp = nil
 end
 
 ---@overload fun(self: Game, previous_state: string, save_data: SaveData, save_id: number)
@@ -251,7 +253,9 @@ function Game:save(x, y)
 
         temp_followers = self.temp_followers,
 
-        flags = self.flags
+        flags = self.flags,
+
+        total_bp = self.total_bp
     }
 
     if x then
@@ -283,6 +287,11 @@ function Game:save(x, y)
     data.recruits_data = {}
     for k,v in pairs(self.recruits_data) do
         data.recruits_data[k] = v:save()
+    end
+
+    data.quests_data = {}
+    for k,v in pairs(self.quests_data) do
+        data.quests_data[k] = v:save()
     end
 
     Kristal.callEvent(KRISTAL_EVENT.save, data)
@@ -373,6 +382,16 @@ function Game:load(data, index, fade)
             end
         end
     end
+    self:initQuests()
+    if data.quests_data then
+        for k,v in pairs(data.quests_data) do
+            if self.quests_data[k] then
+                self.quests_data[k]:load(v)
+            else
+                self.quests_data[k] = FallbackQuest(v)
+            end
+        end
+    end
 
     if data.temp_followers then
         self.temp_followers = data.temp_followers
@@ -390,6 +409,8 @@ function Game:load(data, index, fade)
 
     self.tension = data.tension or 0
     self.max_tension = data.max_tension or 100
+
+    self.total_bp = data.total_bp or 3
 
     self.lw_money = data.lw_money or 2
 
@@ -782,6 +803,13 @@ function Game:initRecruits()
     end
 end
 
+function Game:initQuests()
+    self.quests_data = {}
+    for id,_ in pairs(Registry.quests) do
+        self.quests_data[id] = Registry.createQuest(id)
+    end
+end
+
 ---@param id string
 ---@return PartyMember?
 function Game:getPartyMember(id)
@@ -1095,6 +1123,10 @@ function Game:update()
 
     Kristal.callEvent(KRISTAL_EVENT.postUpdate, DT)
 
+    for _, badge in ipairs(self:getBadgeStorage()) do
+        badge:update(badge.equipped)
+    end
+
     if self.swap_into_mod then
         Kristal.swapIntoMod(unpack(self.swap_into_mod))
         self.swap_into_mod = nil
@@ -1164,6 +1196,38 @@ function Game:draw()
     love.graphics.pop()
 end
 
+---@param ignore_light? boolean -- if you still want some stats etc. despite being in LW
+function Game:getBadgeStorage(ignore_light)
+    if Game:isLight() and not ignore_light then return {} end
+    local inventory ---@type DarkInventory
+    if not Game:isLight() then
+        inventory = Game.inventory
+    else
+        inventory = Game.inventory:getItemByID("light/ball_of_junk").inventory
+    end
+    return inventory:getStorage("badges")
+end
+
+function Game:getUsedBadgePoints(ignore_light)
+    local total_bp = 0
+    for _, badge in ipairs(Game:getBadgeStorage(ignore_light)) do
+        if badge.equipped then
+            total_bp = total_bp + badge:getBadgePoints()
+        end
+    end
+    return total_bp
+end
+
+function Game:getBadgeEquipped(badge, ignore_light)
+    local total_count = 0
+    for _, b in ipairs(Game:getBadgeStorage(ignore_light)) do
+        if b.equipped and b.id == badge then
+            total_count = total_count + 1
+        end
+    end
+    return total_count
+end
+
 --stuff for Noel the Noel-body
 
 local save_dir = "saves"
@@ -1198,6 +1262,24 @@ end
 
 function Game:getUISkin()
     return Game:isLight() and "light" or "dark"
+end
+
+function Game:unlockPartyMember(member)
+    local currentUnlockedParty = Game:getFlag("_unlockedPartyMembers")
+    if Game:getPartyMember(member) then
+        table.insert(currentUnlockedParty, member)
+        Game:setFlag("_unlockedPartyMembers", currentUnlockedParty)
+    else
+        error("Could not find any existing party member with id \""..member.."\".")
+    end
+end
+
+function Game:getUnlockedPartyMembers()
+    return Game:getFlag("_unlockedPartyMembers")
+end
+
+function Game:getQuest(id)
+    return self.quests_data[id]
 end
 
 return Game

@@ -2,6 +2,8 @@
 -- │     The Warp Bin      │ \
 -- └───────────────────────┘ \
 -- or: the feature creep bin    - dobby
+---@param cutscene WorldCutscene
+---@param event Event
 return function(cutscene, event)
     cutscene:text("* It's the warp bin.")
     cutscene:text("* Would you like to warp?[wait:10]\n* You only need the code.")
@@ -9,19 +11,10 @@ return function(cutscene, event)
     if cutscene:choicer({"Sure", "Nope"}) == 2 then
         return
     end
-
-    local wbi_ok = false
+    
+    local action_raw = cutscene:getUserText(8, "warpbin")
     ---@type WarpBinCodeInfo
-    local action
-    local action_raw
-    local wbi = InputMenu()
-    wbi.finish_cb = function(_action, _action_raw)
-        wbi_ok = true
-        action = _action
-        action_raw = _action_raw
-    end
-    Game.world:spawnObject(wbi, "ui")
-    cutscene:wait(function() return wbi_ok end)
+    local action = Mod:getBinCode(action_raw)
 
     if not action_raw then
         -- user changed their mind
@@ -90,6 +83,11 @@ return function(cutscene, event)
     if mod then
         local has_dess = cutscene:getCharacter("dess") ~= nil
 
+        if Kristal.Mods.data[mod] == nil then
+            cutscene:text("* But no connection could be formed.")
+            cutscene:text(string.format("* (Are you missing the %q DLC?)", mod))
+            return
+        end
         cutscene:text("* Your "
             .. (has_dess and "desstination" or "destination ")
             .." is "

@@ -1,3 +1,4 @@
+---@class Kristal
 local Kristal = {}
 
 if not HOTSWAPPING then
@@ -184,12 +185,18 @@ function love.load(args)
 
                 love.graphics.scale(Kristal.getGameScale())
                 Draw.setColor(1, 1, 1, dynamic and BORDER_ALPHA or 1)
+                love.graphics.push("all")
+                love.graphics.translate(
+                    ((love.graphics.getWidth()/Kristal.getGameScale())) / 2 + (((love.graphics.getHeight()/Kristal.getGameScale()) / -2) * (16/9)),
+                    ((love.graphics.getHeight()/Kristal.getGameScale()) / 2) + ((love.graphics.getHeight()/Kristal.getGameScale()) / -2)
+                )
                 if border_texture then
                     Draw.draw(border_texture, 0, 0, 0, BORDER_SCALE)
                 end
                 if dynamic then
                     Kristal.callEvent(KRISTAL_EVENT.onBorderDraw, border, border_texture)
                 end
+                love.graphics.pop()
                 Draw.setColor(1, 1, 1, 1)
                 love.graphics.reset()
             end
@@ -353,6 +360,7 @@ function love.mousepressed(win_x, win_y, button, istouch, presses)
     if Kristal.DebugSystem then
         Kristal.DebugSystem:onMousePressed(x, y, button, istouch, presses)
     end
+    Input.onMousePressed(x, y, button, istouch, presses)
     Kristal.callEvent(KRISTAL_EVENT.onMousePressed, x, y, button, istouch, presses)
 end
 
@@ -367,6 +375,7 @@ function love.mousereleased(x, y, button, istouch, presses)
     if Kristal.DebugSystem then
         Kristal.DebugSystem:onMouseReleased(x, y, button, istouch, presses)
     end
+    Input.onMouseReleased(x, y, button, istouch, presses)
     Kristal.callEvent(KRISTAL_EVENT.onMouseReleased, x, y, button, istouch, presses)
 end
 

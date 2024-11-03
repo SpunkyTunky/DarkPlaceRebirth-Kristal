@@ -224,6 +224,7 @@ function PartyMember:init()
     self.love = 1
     self.exp = 0
     self.max_exp = 99999
+    self.kills = 0
 
     -- Party member specific EXP requirements
     -- The size of this table is the max LV
@@ -975,7 +976,8 @@ function PartyMember:save()
         lw_stats = self.lw_stats,
         spells = self:saveSpells(),
         equipped = self:saveEquipment(),
-        flags = self.flags
+        flags = self.flags,
+        kills = self.kills
     }
     self:onSave(data)
     return data
@@ -998,6 +1000,8 @@ function PartyMember:load(data)
     self.flags = data.flags or self.flags
     self.health = data.health or self:getStat("health", 0, false)
     self.lw_health = data.lw_health or self:getStat("health", 0, true)
+
+    self.kills = data.kills or self.kills
 
     self:onLoad(data)
 end
