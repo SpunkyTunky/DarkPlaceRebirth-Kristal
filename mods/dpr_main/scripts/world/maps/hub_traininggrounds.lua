@@ -11,7 +11,10 @@ return {
   tileheight = 40,
   nextlayerid = 6,
   nextobjectid = 16,
-  properties = {},
+  properties = {
+    ["border"] = "mainhub",
+    ["music"] = "mainhub"
+  },
   tilesets = {
     {
       name = "castle",

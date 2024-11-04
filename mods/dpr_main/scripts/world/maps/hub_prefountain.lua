@@ -12,7 +12,7 @@ return {
   nextlayerid = 5,
   nextobjectid = 14,
   properties = {
-    ["border"] = "castle"
+    ["border"] = "mainhub"
   },
   tilesets = {
     {
