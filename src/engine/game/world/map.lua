@@ -97,11 +97,7 @@ function Map:load()
 end
 
 function Map:onEnter()
-    local noelsave = Noel:loadNoel()
-
-    if Game:hasPartyMember("noel") == false and noelsave then
-        Noel:NoelEnter(noelsave)
-    end
+    Noel:checkNoel()
 end
 
 function Map:onExit() end
@@ -526,6 +522,7 @@ function Map:loadMarkers(layer)
         v.center_y = v.center_y + (layer.offsety or 0)
 
         self.markers[v.name] = v
+        self.markers[v.id] = v
     end
 end
 
@@ -737,12 +734,16 @@ function Map:loadObject(name, data)
         return MagicGlass(data.x, data.y, data.width, data.height)
     elseif name:lower() == "warpdoor" then
         return WarpDoor(data.x, data.y, data.properties)
+    elseif name:lower() == "warpbin" then
+        return WarpBin(data)
     elseif name:lower() == "darkfountain" then
         return DarkFountain(data.x, data.y)
     elseif name:lower() == "fountainfloor" then
         return FountainFloor(data.x, data.y, data.width, data.height)
     elseif name:lower() == "quicksave" then
         return QuicksaveEvent(data.x, data.y, data.width, data.height, data.properties["marker"])
+    elseif name:lower() == "superstar" then
+        return SuperStar(data.x, data.y, data.width, data.height, data.properties)
     elseif name:lower() == "sprite" then
         local sprite = Sprite(data.properties["texture"], data.x, data.y)
         sprite:play(data.properties["speed"], true)
@@ -795,7 +796,8 @@ function Map:populateTilesets(data)
         local filename = tileset_data.exportfilename or tileset_data.filename
         if filename then
             local tileset_path = Utils.absoluteToLocalPath("scripts/world/tilesets/", filename, self.full_map_path)
-            tileset = Registry.getTileset(tileset_path)
+            local backup_name = GeneralUtils:breakString("../../tilesets/", filename, ".lua")
+            tileset = Registry.getTileset(tileset_path or backup_name)
             if not tileset then
                 error("Failed to load map \""..self.data.id.."\", tileset not found: \""..filename.."\"")
             end

@@ -48,17 +48,11 @@ function item:init()
         susie = "Damn, guess I'm cursed.",
         ralsei = "A letter?... For me...?",
         noelle = "Armor? (It's cool...)",
-        dess = "ermmm this has GOT to be bait",
+        dess = "ermmm this has GOT to be bait dont feed the trolls guys",
         jamm = "Don't think this is a good idea...",
         noel = "I'll take my chances.",
+        ["jamm+marcy"] = "Marcy, we don't respond to these.",
     }
-end
-
-function item:getReaction(user_id, reactor_id)
-    if user_id == "jamm" and reactor_id == user_id and Game:getFlag("marcy_joined") then
-		return "Marcy, we don't respond to these."
-	end
-	return super.getReaction(self, user_id, reactor_id)
 end
 
 return item

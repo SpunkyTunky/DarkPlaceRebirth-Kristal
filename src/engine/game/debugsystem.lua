@@ -105,6 +105,9 @@ function DebugSystem:init()
 
     self.mouse_clicked = false
 
+    self.playing_music = nil
+    self.test_music = Music()
+    
     self.playing_sound = nil
     self.old_music_volume = 1
     self.music_needs_reset = false
@@ -118,6 +121,12 @@ function DebugSystem:init()
     self.temp_flag_filter_mode = nil
 
     self.filtered_flags_list = {}
+end
+
+function DebugSystem:locateDLCs()
+    for i, v in ipairs(t) do
+        
+    end
 end
 
 function DebugSystem:getStage()
@@ -395,6 +404,8 @@ function DebugSystem:fadeMusicIn()
     local music = Game:getActiveMusic()
     if music and self.music_needs_reset then
         music:fade(self.old_music_volume, 0.5)
+        music:resume()
+        self.test_music:stop()
     end
     self.music_needs_reset = false
 end
@@ -655,6 +666,21 @@ function DebugSystem:registerSubMenus()
         end)
     end
 
+    self:registerMenu("dlc_select", "DLC Select", "search")
+
+    local dlcs = Utils.filter(Kristal.Mods.getMods(), function(mod) return not mod.hidden end)
+    local dlc_ids = {}
+    for i, v in ipairs(dlcs) do
+        table.insert(dlc_ids, v.id)
+    end
+
+    for i, v in ipairs(dlc_ids) do
+        self:registerOption("dlc_select", v, "Enter this DLC.", function ()
+            Game:swapIntoMod(v, false)
+            self:closeMenu()
+        end)
+    end
+
     self:registerMenu("wave_select", "Wave Select", "search")
     -- loop through registry and add menu options for all waves
     local waves_list = {}
@@ -681,6 +707,17 @@ function DebugSystem:registerSubMenus()
                 self.playing_sound:stop()
             end
             self.playing_sound = Assets.playSound(id)
+        end)
+    end
+	
+    self:registerMenu("music_test", "Music Test", "search")
+
+    for id, _ in pairs(Assets.data.music) do
+        self:registerOption("music_test", id, "Play this song.", function ()
+            if self.playing_music then
+                self.test_music:stop()
+            end
+            self.playing_music = self.test_music:play(id)
         end)
     end
 
@@ -726,6 +763,10 @@ function DebugSystem:registerSubMenus()
         for _,mod_lib in pairs(Mod.libs) do
             Utils.merge(borders, Utils.getFilesRecursive(mod_lib.info.path.."/assets/sprites/borders", ".png"))
         end
+    end
+
+    for key, value in pairs(Registry.borders) do
+        table.insert(borders, key)
     end
 
     for _,border in ipairs(Utils.removeDuplicates(borders)) do
@@ -792,6 +833,13 @@ function DebugSystem:registerDefaults()
                             self:fadeMusicOut()
                             self:enterMenu("sound_test", 0)
                         end, in_game)
+						
+    self:registerOption("main", "Music Test", "Enter the music test menu.", function ()
+                            self:fadeMusicOut()
+							local music = Game:getActiveMusic()
+                            music:pause()
+                            self:enterMenu("music_test", 0)
+                        end, in_game)
 
     self:registerOption("main", "Change Party", "Enter the party change menu.", function ()
                             self:enterMenu("change_party", 0)
@@ -829,6 +877,10 @@ function DebugSystem:registerDefaults()
     self:registerOption("main", "Play Legend", "Play a legend cutscene.", function ()
                             self:enterMenu("legend_select", 0)
                         end, function() return in_overworld() or in_legend() end)
+
+    self:registerOption("main", "Select DLC", "Select a DLC to load into.", function ()
+                            self:enterMenu("dlc_select", 0)
+    end, function() return in_overworld()end)
 
     -- Battle specific
     self:registerOption("main", "Start Wave", "Start a wave.", function ()
@@ -971,9 +1023,17 @@ function DebugSystem:onStateChange(old, new)
     end
 
     self:fadeMusicIn()
+    if self.playing_music then
+        self.playing_music:stop()
+    end
 
-    if old == "IDLE" and new == "MENU" and self.current_menu == "sound_test" then
-        self:fadeMusicOut()
+    if old == "IDLE" and new == "MENU" then
+        if self.current_menu == "sound_test" then
+            self:fadeMusicOut()
+        elseif self.current_menu == "music_test" then
+            local music = Game:getActiveMusic()
+            music:pause()
+        end
     end
 end
 
@@ -1056,7 +1116,7 @@ function DebugSystem:onKeyPressed(key, is_repeat)
         if Input.isConfirm(key) and not is_repeat then
             local option = options[self.current_selecting]
             if option then
-                if self.current_menu ~= "sound_test" then
+                if self.current_menu ~= "sound_test" and self.current_menu ~= "music_test" then
                     Assets.playSound("ui_select")
                 end
                 option.func()

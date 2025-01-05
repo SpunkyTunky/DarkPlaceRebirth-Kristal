@@ -28,6 +28,7 @@ function item:init()
         ["susie"] = 80,
         ["ralsei"] = 50,
         ["noelle"] = 30,
+		["dess"] = 80,
 		["jamm"] = 70,
 		["noel"] = 400,
     }
@@ -69,16 +70,11 @@ function item:init()
         susie = "Mmm, blood!",
         ralsei = "Aah, sticky...",
         noelle = "Mmm... what!? It's blood!?",
+		dess = "haha blood",
         jamm = "AcousticJAMM.",
+        ["jamm+marcy"] = "AcousticJAMM. // MarcyJAMM.",
         noel = "Chewy!"
     }
-end
-
-function item:getReaction(user_id, reactor_id)
-    if user_id == "jamm" and reactor_id == user_id and Game:getFlag("marcy_joined") then
-		return "AcousticJAMM. // MarcyJAMM."
-	end
-	return super.getReaction(self, user_id, reactor_id)
 end
 
 return item

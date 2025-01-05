@@ -10,10 +10,11 @@ function character:init()
     self:setDarkTransitionActor("kris_dark_transition") -- placeholder
 
     self.level = 1
-    self.title = "Marksman\nTakes aim with\na rifle."
+    self.title = "Musketeer\nTakes aim with\na musket."
 
     self.soul_priority = 1
-    self.soul_color = {0.26, 1, 1}
+    self.soul_color = {1, 1, 1}
+    self.monster = true
 
     self.has_act = false
     self.has_spells = true
@@ -37,8 +38,6 @@ function character:init()
     self.weapon_icon = "ui/menu/equip/gun"
 
     self:setWeapon("basic_rifle")
-    self:setArmor(1, "bshot_glasses")
-    self:setArmor(2, "syrup_jar")
 
     self.lw_weapon_default = "light/foam_dart_rifle"
     self.lw_armor_default = "light/bandage"
@@ -48,6 +47,8 @@ function character:init()
     self.attack_bar_color = {0, 0, 232/255}
     self.attack_box_color = {0, 0, 0.5}
     self.xact_color = nil
+
+    self.icon_color = {12/255, 48/255, 205/255}
 
     self.menu_icon = "party/brenda/head"
     self.head_icons = "party/brenda/icon"

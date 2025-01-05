@@ -144,6 +144,30 @@ end
 function PartyBattler:hurt(amount, exact, color, options)
     options = options or {}
 
+    if self.chara.reflectNext then
+        -- ok, remove the reflect thingy
+        self.chara.reflectNext = false
+        -- calculate the amount
+        amount = self:calculateDamage(amount)
+        -- pick a random one
+        -- I would do the attacker but like god am I lazy and I hate the process for this mechanic so much for some reason
+        -- like a disproportionate amount
+        -- so im picking a random one instead of any other bullshit
+        local attackedEnemy = Utils.pick(Game.battle.enemies)
+        -- if the damage is over the character's max HP, set it to that
+        if amount > self.chara:getHealth() then
+            amount = self.chara:getHealth()
+        end
+        -- also, the damage can never kill the enemy outright (for da pacifists)
+        --   ...and also kinda so cheese isn't as possible
+        if amount >= attackedEnemy.health then
+            amount = attackedEnemy.health-1
+        end
+        -- hurt em'
+        attackedEnemy:hurt(amount, self)
+        return
+    end
+
     if love.math.random(1,100) < self.guard_chance then
 		self:statusMessage("msg", "guard")
 		amount = math.ceil(amount * self.guard_mult)
@@ -163,6 +187,15 @@ function PartyBattler:hurt(amount, exact, color, options)
 
         if self.chara.id == "noel" then
             self:noel_damage(amount)
+        elseif self.chara.equipped["weapon"].last_stand then
+            if (self.chara:getHealth() - amount) <= 0 and not self.last_stood then
+                local neardeath = self.chara:getHealth() - 1
+                neardeath = self.chara:getHealth() - neardeath
+                self:removeHealth(neardeath)
+                self.last_stood = true
+            else
+                self:removeHealth(amount)
+            end
         else
             self:removeHealth(amount)
         end
@@ -245,7 +278,7 @@ function PartyBattler:mhp_hurt(amount, exact, color, options)
         end
 
         if self.chara.id == "noel" then
-            self:noel_damage_mhp(amount)
+            self:noel_damage(amount) -- lore reasons
         else
             self:removeMaxHealth(amount)
         end
@@ -263,7 +296,7 @@ function PartyBattler:mhp_hurt(amount, exact, color, options)
         end
 
         if self.chara.id == "noel" then
-            self:noel_damage_mhp(amount) -- Use a seprate function for a secret character that nobody will ever find on a regular playthrough.
+            self:noel_damage(amount)
         else
             self:removeMaxHealth(amount) -- Use a separate function for cleanliness
         end
@@ -845,40 +878,7 @@ function PartyBattler:noel_damage(amount) -- DO NOT QUESTION MY CHOICES
         self:removeHealth(amount * 10)
         self:statusMessage("damage", amount * 10, color, true)
     end
-    if self.noel_hit_counter and self.noel_hit_counter > 5 then -- for if noel decides you fucking suck a dodging
-        self:setAnimation("stop")
-        Assets.playSound("voice/stop_getting_hit")
-        Assets.playSound("grab")
-        Assets.playSound("alert")
-        Assets.playSound("impact")
-        Assets.playSound("jump")
-        Assets.playSound("locker")
-        Assets.playSound("petrify")
-        Assets.playSound("ominous")
-        Assets.playSound("rudebuster_hit")
-        Assets.playSound("rudebuster_swing")
-        love.window.setTitle("STOP GETTING HIT")
-        self.noel_hit_counter = -1
-    elseif self.noel_hit_counter then
-        self.noel_hit_counter = self.noel_hit_counter + 1
-    else 
-        self.noel_hit_counter = 1
-    end
-end
-
-function PartyBattler:noel_damage_mhp(amount) -- DO NOT QUESTION MY CHOICES 2 ELECTRIC BOOGALOO
-    local meth = love.math.random(1, 3) --random number for hit chance
-    if meth == 1 then -- haha, funny noel/null damage joke thingy
-        Assets.playSound("awkward")
-        Assets.playSound("voice/noel-#")
-        self:removeHealth(0)
-        self:statusMessage("msg", "null", {0.9,0.9,0.9}, true)
-    else-- haha, 10 times the pain and funny noise
-        Assets.playSound("voice/noel-#")
-        self:removeMaxHealth(amount * 10)
-        self:statusMessage("deadly", amount * 10, color, true)
-    end
-    if self.noel_hit_counter and self.noel_hit_counter > 5 then -- for if noel decides you fucking suck a dodging
+    if self.noel_hit_counter and self.noel_hit_counter > 5 and self.chara.health >= 1 then -- for if noel decides you fucking suck at dodging
         self:setAnimation("stop")
         Assets.playSound("voice/stop_getting_hit")
         Assets.playSound("grab")

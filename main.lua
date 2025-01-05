@@ -7,6 +7,9 @@ require("src.engine.vendcust")
 DiscordRPC = require("src.lib.discordrpc")
 
 ---@diagnostic disable-next-line: lowercase-global
+https = require("src.lib.https")
+
+---@diagnostic disable-next-line: lowercase-global
 utf8 = require("utf8")
 
 _Class = require("src.lib.hump.class")
@@ -25,6 +28,7 @@ GitFinder = require("src.utils.gitfinder")
 Utils = require("src.utils.utils")
 CollisionUtil = require("src.utils.collision")
 Draw = require("src.utils.draw")
+GeneralUtils = require("src.utils.utils_general")
 
 Kristal = require("src.kristal")
 -- Ease of access for game variables
@@ -73,9 +77,11 @@ MainMenuControls = require("src.engine.menu.mainmenucontrols")
 MainMenuDeadzone = require("src.engine.menu.mainmenudeadzone")
 MainMenuDLCHandler = require("src.engine.menu.mainmenudlchandler")
 MainMenuWarningHandler = require("src.engine.menu.mainmenuwarninghandler")
+MainMenuPlugins = require("src.engine.menu.mainmenuplugins")
 
 ModList = require("src.engine.menu.objects.modlist")
 ModButton = require("src.engine.menu.objects.modbutton")
+DLCButton = require("src.engine.menu.objects.DLCbutton")
 ModCreateButton = require("src.engine.menu.objects.modcreatebutton")
 FileButton = require("src.engine.menu.objects.filebutton")
 FileNamer = require("src.engine.menu.objects.filenamer")
@@ -97,6 +103,7 @@ ShadowFX = require("src.engine.drawfx.shadowfx")
 FountainShadowFX = require("src.engine.drawfx.fountainshadowfx")
 GradientFX = require("src.engine.drawfx.gradientfx")
 ScissorFX = require("src.engine.drawfx.scissorfx")
+VHSFilterFX = require("src.engine.drawfx.vhsfilterfx")
 
 Collider = require("src.engine.colliders.collider")
 ColliderGroup = require("src.engine.colliders.collidergroup")
@@ -118,6 +125,8 @@ LightEquipItem = require("src.engine.game.common.data.lightequipitem")
 Recruit = require("src.engine.game.common.data.recruit")
 Quest = require("src.engine.game.common.data.quest")
 FallbackQuest = require("src.engine.game.common.data.fallbackquest")
+ButtonPrompt = require("src.engine.game.buttonprompt")
+Material = require("src.engine.game.common.data.material")
 
 ActorSprite = require("src.engine.game.common.actorsprite")
 Inventory = require("src.engine.game.common.inventory")
@@ -140,6 +149,7 @@ Textbox = require("src.engine.game.common.textbox")
 Choicebox = require("src.engine.game.common.choicebox")
 TextChoicebox = require("src.engine.game.common.textchoicebox")
 SmallFaceText = require("src.engine.game.common.smallfacetext")
+MusicLogo = require("src.engine.game.common.musiclogo")
 
 World = require("src.engine.game.world")
 Map = require("src.engine.game.world.map")
@@ -225,10 +235,12 @@ MagicGlass = require("src.engine.game.world.events.magicglass")
 TileObject = require("src.engine.game.world.events.tileobject")
 FrozenEnemy = require("src.engine.game.world.frozenenemy")
 WarpDoor = require("src.engine.game.world.events.warpdoor")
+WarpBin = require("src.engine.game.world.events.warpbin")
 DarkFountain = require("src.engine.game.world.events.darkfountain")
 FountainFloor = require("src.engine.game.world.events.fountainfloor")
 QuicksaveEvent = require("src.engine.game.world.events.quicksave")
 MirrorArea = require("src.engine.game.world.events.mirror")
+SuperStar = require("src.engine.game.world.events.superstar")
 
 ToggleController = require("src.engine.game.world.events.controllers.togglecontroller")
 FountainShadowController = require("src.engine.game.world.events.controllers.fountainshadowcontroller")
@@ -247,9 +259,12 @@ GrazeSprite = require("src.engine.game.battle.grazesprite")
 ArenaSprite = require("src.engine.game.battle.arenasprite")
 ArenaMask = require("src.engine.game.battle.arenamask")
 SnowGraveSpell = require("src.engine.game.battle.snowgravespell")
+XSlashSpell = require("src.engine.game.battle.xslashspell")
 Quicktime = require("src.engine.game.battle.quicktime")
 Slapper = require("src.engine.game.battle.slapper")
 Combo = require("src.engine.game.battle.combo")
+
+BlueSoul = require("src.engine.game.battle.souls.bluesoul")
 
 BattleUI = require("src.engine.game.battle.ui.battleui")
 ActionBox = require("src.engine.game.battle.ui.actionbox")
@@ -275,13 +290,29 @@ SnowGraveSnowflake = require("src.engine.game.effects.snowgravesnowflake")
 FatalEffect = require("src.engine.game.effects.fataleffect")
 RudeBusterBeam = require("src.engine.game.effects.rudebusterbeam")
 RudeBusterBurst = require("src.engine.game.effects.rudebusterburst")
+MirrorEffect = require("src.engine.game.effects.mirroreffect")
+
+Discoball = require("src.engine.game.battle.bg.discoball")
+DojoBG = require("src.engine.game.battle.bg.dojobg")
+ConcentrateBG = require("src.engine.game.battle.bg.concentratebg")
 
 Shop = require("src.engine.game.shop")
 Shopkeeper = require("src.engine.game.shop.shopkeeper")
 
+Border = require("src.engine.border")
+ImageBorder = require("src.engine.imageborder")
+
 GameOver = require("src.engine.game.gameover")
+GameOverSF = require("src.engine.game.gameoversf")
 
 Legend = require("src.engine.game.legend")
+
+DogCheck = require("src.engine.game.dogcheck")
+
+
+WarpBinCodes = require("src.engine.warp_bin")
+WarpBinCS = require("src.engine.game.world.warp_bin_cs")
+
 
 DarkTransition = require("src.engine.game.darktransition.darktransition")
 LoadingDarkTransition = require("src.engine.game.darktransition.loadingdarktransition")

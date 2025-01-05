@@ -30,7 +30,10 @@
 ---@field events table<string, Event|Object>
 ---@field controllers table<string, Event|Object>
 ---@field shops table<string, Shop>
+---@field borders table<string, Border>
 ---@field minigames table<string, MinigameHandler>
+---@field materials table<string, Material>
+---@field shaders table<string, Shader>
 ---
 local Registry = {}
 local self = Registry
@@ -62,9 +65,12 @@ Registry.paths = {
     ["events"]           = "world/events",
     ["controllers"]      = "world/controllers",
     ["shops"]            = "shops",
+    ["borders"]          = "borders",
     ["minigames"]        = "minigames",
     ["combos"]           = "battle/combos",
     ["quests"]           = "data/quests",
+    ["materials"]        = "data/materials",
+    ["shaders"]          = "shaders",
 }
 
 ---@param preload boolean?
@@ -90,6 +96,30 @@ function Registry.initialize(preload)
             self.base_scripts["battle/"..path] = chunk
         end
 
+        for _,path in ipairs(Utils.getFilesRecursive("borders", ".lua")) do
+            local chunk = love.filesystem.load("borders/"..path..".lua")
+            self.base_scripts["borders/"..path] = chunk
+        end
+
+        if Mod then
+            for _,path in ipairs(Utils.getFilesRecursive("scripts", ".lua")) do
+                local chunk = love.filesystem.load("scripts/"..path..".lua")
+                self.base_scripts[path] = chunk
+            end
+
+            Kristal.PluginLoader.script_chunks = {}
+            for plugin in Kristal.PluginLoader.iterPlugins(true) do
+                for _,path in ipairs(Utils.getFilesRecursive(plugin.path.."/scripts", ".lua")) do
+                    local chunk = love.filesystem.load(plugin.path.."/scripts/"..path..".lua")
+                    Kristal.PluginLoader.addScriptChunk(plugin.id, path, chunk)
+                end
+                if Mod and love.filesystem.getInfo(plugin.path.."/plugin.lua") then
+                    local chunk = love.filesystem.load(plugin.path.."/plugin.lua")
+                    Kristal.PluginLoader.plugin_scripts[plugin.id] = assert(chunk(), plugin.path.."/plugin.lua returned nil.")
+                end
+            end
+        end
+
         Registry.initActors()
     end
     if not preload then
@@ -111,9 +141,12 @@ function Registry.initialize(preload)
         Registry.initEvents()
         Registry.initControllers()
         Registry.initShops()
+        Registry.initBorders()
         Registry.initMinigames()
         Registry.initCombos()
         Registry.initQuests()
+        Registry.initMaterials()
+        Registry.initShaders()
 
         Kristal.callEvent(KRISTAL_EVENT.onRegistered)
     end
@@ -481,6 +514,24 @@ function Registry.createShop(id, ...)
     end
 end
 
+---@generic T
+---@param id Border.`T`
+---@param ... any
+---@return T|Border
+function Registry.createBorder(id, ...)
+    if self.borders[id] then
+        return self.borders[id](...)
+    else
+        local texture = Assets.getTexture("borders/"..id)
+        if texture then
+            return ImageBorder(texture,id)
+        end
+        local border = Border()
+        border.id = id
+        return border
+    end
+end
+
 ---@param id string
 ---@return Minigame|nil
 function Registry.getMinigame(id)
@@ -511,6 +562,18 @@ function Registry.createQuest(id, ...)
         return self.quests[id](...)
     else
         error("Attempt to create non existent quest \"" .. tostring(id) .. "\"")
+    end
+end
+
+function Registry.getMaterial(id)
+    return self.materials[id]
+end
+
+function Registry.createMaterial(id, ...)
+    if self.materials[id] then
+        return self.materials[id](...)
+    else
+        error ("Attempted to create nonexistent material \"" .. tostring(id) .. "\"")
     end
 end
 
@@ -655,9 +718,27 @@ function Registry.registerShop(id, class)
 end
 
 ---@param id string
+---@param border Border
+function Registry.registerBorder(id, border)
+    self.borders[id] = border
+end
+
+---@param id string
 ---@param class Minigame
 function Registry.registerMinigame(id, class)
     self.minigames[id] = class
+end
+
+---@param id string
+---@param class Material
+function Registry.registerMaterial(id, class)
+    self.materials[id] = class
+end
+
+---@param id string
+---@param class Shader
+function Registry.registerShader(id, class)
+    self.shaders[id] = class
 end
 
 -- Internal Functions --
@@ -930,6 +1011,18 @@ function Registry.initShops()
     Kristal.callEvent(KRISTAL_EVENT.onRegisterShops)
 end
 
+function Registry.initBorders()
+    self.borders = {}
+
+    for _,path,border in self.iterScripts(Registry.paths["borders"]) do
+        assert(border ~= nil, '"borders/'..path..'.lua" does not return value')
+        border.id = border.id or path
+        self.registerBorder(border.id, border)
+    end
+
+    Kristal.callEvent(KRISTAL_EVENT.onRegisterBorders)
+end
+
 function Registry.initMinigames()
     self.minigames = {}
 
@@ -959,6 +1052,25 @@ function Registry.initQuests()
         assert(quest ~= nil, '"data/quests/' .. path .. '.lua" does not return value')
         quest.id = quest.id or path
         self.quests[quest.id] = quest
+    end
+end
+
+function Registry.initMaterials()
+    self.materials = {}
+
+    for _,path,material in self.iterScripts(Registry.paths["materials"]) do
+        assert(material ~= nil, '"data/materials/' .. path .. '.lua" does not return value')
+        material.id = material.id or path
+        self.materials[material.id] = material
+    end
+end
+
+function Registry.initShaders()
+    self.shaders = {}
+
+    for _,path,shader in Registry.iterScripts("shaders/") do
+        assert(shader ~= nil, '"shaders/'..path..'.lua" does not return value')
+        self.shaders[path] = shader
     end
 end
 
@@ -1043,6 +1155,12 @@ function Registry.iterScripts(base_path, exclude_folder)
             parse("scripts/"..base_path, library.info.script_chunks)
         end
         parse("scripts/"..base_path, Mod.info.script_chunks)
+        for plugin,_,_ in Kristal.PluginLoader.iterPlugins(true) do
+            local value = Kristal.PluginLoader.script_chunks[plugin.id]
+            if value then
+                parse(base_path, value)
+            end
+        end
     end
 
     CLASS_NAME_GETTER = DEFAULT_CLASS_NAME_GETTER

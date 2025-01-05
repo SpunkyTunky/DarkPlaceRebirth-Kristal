@@ -18,6 +18,8 @@
 ---
 ---@field defeated_enemies      table
 ---
+---@field no_dojo_bg            boolean
+---
 ---@overload fun(...) : Encounter
 local Encounter = Class()
 
@@ -49,6 +51,9 @@ function Encounter:init()
 	self.flee = true
 	-- Chance out of 100 that the player can flee this battle (x/100)
 	self.flee_chance = 60
+
+    -- Prevents the Dojo background from being added on Boss Rushes and Boss Refights
+    self.no_dojo_bg = false
 end
 
 -- Callbacks
@@ -316,9 +321,16 @@ end
 ---@param x         number  The x-coordinate the soul should spawn at.
 ---@param y         number  The y-coordinate the soul should spawn at.
 ---@param color?    table   A custom color for the soul, that should override its default.
+---@return BlueSoul
 ---@return Soul
 function Encounter:createSoul(x, y, color)
-    return Soul(x, y, color)
+    local player = Game.party[1]
+    local player_name = Game.save_name:upper()
+    if player_name == "BLUE" then
+        return BlueSoul(x, y, color)
+    else
+        return Soul(x, y, color)
+    end
 end
 
 ---@return boolean
@@ -334,14 +346,14 @@ end
 ---@param flag  string
 ---@param value any
 function Encounter:setFlag(flag, value)
-    Game:setFlag("encounter#"..self.id..":"..flag, value)
+    Game:setFlag("encounter#"..Mod.info.id.."/"..self.id..":"..flag, value)
 end
 
 ---@param flag      string
 ---@param default?  any
 ---@return any
 function Encounter:getFlag(flag, default)
-    return Game:getFlag("encounter#"..self.id..":"..flag, default)
+    return Game:getFlag("encounter#"..Mod.info.id.."/"..self.id..":"..flag, default)
 end
 
 --- Increments a numerical flag by `amount`.
@@ -349,7 +361,7 @@ end
 ---@param amount?   number  (Defaults to `1`)
 ---@return number
 function Encounter:addFlag(flag, amount)
-    return Game:addFlag("encounter#"..self.id..":"..flag, amount)
+    return Game:addFlag("encounter#"..Mod.info.id.."/"..self.id..":"..flag, amount)
 end
 
 return Encounter

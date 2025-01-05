@@ -48,15 +48,10 @@ function item:init()
     -- Character reactions
     self.reactions = {
         jamm = "Don't have a cow, man.",
-        noel = "SnIperMonkeyP"
+        ["jamm+marcy"] = "Huh? Yuri Nator? ...Oh. Clever, Marcy.",
+        noel = "SnIperMonkeyP",
+		dess = "play undertale 2 revenge of the robots",
     }
-end
-
-function item:getReaction(user_id, reactor_id)
-    if user_id == "jamm" and reactor_id == user_id and Game:getFlag("marcy_joined") then
-		return "Huh? Yuri Nator? ...Oh. Clever, Marcy."
-	end
-	return super.getReaction(self, user_id, reactor_id)
 end
 
 function item:convertToLightEquip(inventory)

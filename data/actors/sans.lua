@@ -4,7 +4,7 @@ function actor:init()
     super.init(self)
 
     -- Display name (optional)
-    self.name = "sans"
+    self.name = "sans."
 
     -- Width and height for this actor, used to determine its center
     self.width = 25
@@ -27,11 +27,13 @@ function actor:init()
     if self.month == 10 and self.day == 31 then
         self.default = "sumpkin"
     else
-        self.default = "idle"
+        self.default = "walk"
     end
 
     -- Sound to play when this actor speaks (optional)
     self.voice = "sans"
+
+    self.font = "sans"
     -- Path to this actor's portrait for dialogue (optional)
     self.portrait_path = "face/sans"
     -- Offset position for this actor's portrait (optional)
@@ -49,6 +51,11 @@ function actor:init()
     -- Table of sprite offsets (indexed by sprite name)
     self.offsets = {
         ["shrug"] = {-3, 0},
+        ["icecream_1"] = {-2, 0},
+        ["icecream_2"] = {-2, 0},
+        ["icecream_3"] = {-2, 0},
+        ["icecream_4"] = {-2, 0},
+        ["icecream_5"] = {-2, 0},
         ["bike"] = {0, -4},
     }
 

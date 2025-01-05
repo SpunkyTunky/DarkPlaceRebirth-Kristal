@@ -52,17 +52,11 @@ function item:init()
         susie = "Look. I have standards.",
         ralsei = "It's still wearable!",
         noelle = "(Reminds me of Asgore...)",
-        dess = "now i can go toe to toe with that BITCH catty",
+        dess = "now i can go toe to toe with that BITCH catty", -- who tf wrote this lmao
         jamm = "Ehh... Okay...?",
+        ["jamm+marcy"] = "You want this, Marcy? Eh, sure...",
         noel = "Perfect for reverse weddings!",
     }
-end
-
-function item:getReaction(user_id, reactor_id)
-    if user_id == "jamm" and reactor_id == user_id and Game:getFlag("marcy_joined") then
-		return "You want this, Marcy? Eh, sure..."
-	end
-	return super.getReaction(self, user_id, reactor_id)
 end
 
 function item:getShopDescription()

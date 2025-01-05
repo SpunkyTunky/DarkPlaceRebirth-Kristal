@@ -53,17 +53,12 @@ function item:init()
         susie = "Another one?!",
         ralsei = "Do I look good?",
         noelle = "It's pretty...",
+		dess = "yet another ribbion dialogue",
         ceroba = "Back where it should be.",
         noel = "I'll tie it to my umbrella.",
 		jamm = "I don't know how I'd make it work.",
+        ["jamm+marcy"] = "It's way too big for you, Marcy!"
     }
-end
-
-function item:getReaction(user_id, reactor_id)
-    if user_id == "jamm" and reactor_id == user_id and Game:getFlag("marcy_joined") then
-		return "It's way too big for you, Marcy!"
-	end
-	return super.getReaction(self, user_id, reactor_id)
 end
 
 function item:convertToLightEquip(chara)

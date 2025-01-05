@@ -2,14 +2,19 @@ local character, super = Class(PartyMember, "noel")
 
 function character:init()
     super.init(self)
+    self.lw_portrait = "face/noel/neutral"
+    self.lw_armor_default = "light/none"
+
     self.set_buttons = {"magic", "item", "spare", "tension"}
     -- Display name
     self.name = "Noel"
 
-    self.cm_draw = true
+    self.cm_draw = true --for the character select draw function
 
     -- Actor (handles sprites)
     self:setActor("noel")
+    self:setDarkTransitionActor("noel")
+
     local lever = "-1"
     -- Display level (saved to the save file)
     self.level = lever
@@ -64,7 +69,6 @@ function character:init()
         magic = 1
     }
 
-    -- Max stats from level-ups
     self.lw_max_stats = {
         health = 900,
         attack = 11,
@@ -75,12 +79,8 @@ function character:init()
     -- Weapon icon in equip menu
     self.weapon_icon = "ui/menu/equip/old_umbrella"
 
-    -- Equipment (saved to the save file)
-
-    -- Default light world equipment item IDs (saves current equipment)
     self.lw_weapon_default = "light/old_umbrella"
     self.weapon_default = "old_umbrella"
-    --self.lw_armor_default = "light/bandage"
 
     -- Character color (for action box outline and hp bar)
     self.color = {1, 1, 1}
@@ -92,6 +92,8 @@ function character:init()
     self.attack_box_color = {1, 1, 1}
     -- X-Action color (for the color of X-Action menu items) (defaults to the main color)
     self.xact_color = {1, 1, 1}
+
+    self.icon_color = {150/255, 150/255, 150/255}
 
     -- Head icon in the equip / power menu
     self.menu_icon = "party/noel/head"
@@ -130,7 +132,47 @@ function character:init()
     self.opinions = {}
     self.default_opinion = 0
 
+    self.pain_img = Assets.getTexture("ui/menu/icon/pain")
+
 end
+
+function character:onLightLevelUp(level) end --do not remove this or noel will not work in light battles 
+
+function character:PainStat(y)
+    local i = y
+
+    Draw.setColor(0, 0, 0, 1)
+    love.graphics.rectangle("fill", 18,145, 190,30)
+
+    if math.random(1, 10) == 1 then
+        love.graphics.rectangle("fill", -9,145, 30,30)
+        Draw.setColor(1, 1, 1, 1)
+        Draw.draw(self.pain_img, -8, i + 6, 0, 2, 2)
+    end
+
+    Draw.setColor(1, 1, 1, 1)
+
+    love.graphics.print("Pain:", 18, i)
+
+    love.graphics.print("x", 134, i)
+
+    local n = 2
+
+    local x, y = math.random(n, -n), math.random(n, -n)
+    love.graphics.print("1", 148 + x, i + y)
+
+    local x, y = math.random(n, -n), math.random(n, -n)
+    love.graphics.print("0", 162 + x, i + y)
+end
+
+function character:drawPowerStat(index, x, y, menu)
+    self:PainStat(143)
+end
+
+function character:drawEquipStat(menu)
+    self:PainStat(145)
+end
+
 
 function character:getGameOverMessage(main)
     local save = Game:loadNoel()
@@ -160,13 +202,12 @@ function character:save()
         kills = self.kills,
     }
 
+    local save = Noel:loadNoel()
+
     if Kristal.temp_save == true then
-    else
+    elseif save then
         local num = love.math.random(1, 999999)
         Game:setFlag("noel_SaveID", num)
-
-    local save = Noel:loadNoel()
-    --if save then
         local newData = {
             Attack = self.stats.attack,
             Magic = self.stats.magic,
@@ -185,7 +226,8 @@ function character:save()
 
             local maptable ={
                 SaveID = num,
-                Map = Game.world.map.id
+                Map = Game.world.map.id,
+                Mod = Mod.info.id
             }
 
             Noel:saveNoel(maptable)

@@ -1,7 +1,7 @@
 return {
-  version = "1.9",
+  version = "1.11",
   luaversion = "5.1",
-  tiledversion = "1.9.2",
+  tiledversion = "1.11.0",
   class = "",
   orientation = "orthogonal",
   renderorder = "right-down",
@@ -9,10 +9,11 @@ return {
   height = 17,
   tilewidth = 40,
   tileheight = 40,
-  nextlayerid = 8,
-  nextobjectid = 49,
+  nextlayerid = 10,
+  nextobjectid = 69,
   properties = {
-    ["music"] = "demonic_little_grey_cliffs"
+    ["music"] = "demonic_little_grey_cliffs",
+    ["name"] = "Cliffside - Beginning"
   },
   tilesets = {
     {
@@ -56,19 +57,19 @@ return {
       properties = {},
       encoding = "lua",
       data = {
-        0, 0, 0, 0, 0, 22, 23, 23, 23, 23, 23, 0, 0, 0, 0, 0, 0, 0, 0, 22, 23, 23, 23, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 22, 23, 10, 23, 5, 23, 0, 0, 0, 0, 0, 0, 0, 0, 22, 23, 23, 23, 24, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 22, 23, 23, 23, 23, 23, 0, 0, 0, 0, 0, 0, 0, 0, 22, 23, 23, 23, 24, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 21, 23, 23, 23, 23, 5, 0, 0, 0, 0, 0, 0, 2, 4, 22, 23, 23, 23, 24, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 71, 71, 71, 71, 71, 71, 0, 0, 0, 0, 0, 0, 7, 9, 22, 23, 23, 23, 24, 8, 8, 8, 8, 8, 14,
+        0, 0, 0, 0, 0, 22, 23, 23, 23, 23, 24, 0, 0, 0, 0, 0, 0, 0, 0, 22, 23, 23, 23, 24, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 22, 23, 10, 23, 5, 24, 0, 0, 0, 0, 0, 0, 0, 0, 22, 23, 23, 23, 24, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 22, 23, 23, 23, 23, 24, 0, 0, 0, 0, 0, 0, 0, 0, 22, 23, 23, 23, 24, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 21, 23, 23, 23, 23, 15, 0, 0, 0, 0, 0, 0, 2, 4, 22, 23, 23, 23, 24, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 71, 71, 71, 71, 71, 71, 0, 0, 0, 0, 0, 0, 7, 9, 22, 23, 23, 23, 24, 3, 3, 3, 3, 3, 4,
         3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 0, 0, 0, 17, 18, 2, 3, 3, 3, 3, 8, 8, 8, 8, 8, 14,
         8, 8, 8, 8, 8, 8, 11, 8, 8, 8, 8, 6, 13, 14, 0, 0, 0, 22, 23, 17, 19, 12, 8, 8, 8, 8, 14, 18, 18, 19,
-        8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 11, 14, 0, 0, 0, 22, 2, 3, 4, 17, 19, 12, 8, 8, 14, 23, 23, 24,
-        8, 11, 8, 8, 8, 8, 8, 8, 8, 8, 6, 8, 8, 14, 0, 0, 0, 22, 17, 19, 8, 3, 4, 17, 18, 18, 19, 23, 23, 24,
-        18, 18, 18, 18, 18, 18, 18, 18, 18, 82, 84, 18, 18, 19, 0, 0, 0, 2, 22, 23, 18, 18, 9, 22, 23, 23, 24, 23, 23, 24,
+        8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 11, 14, 0, 0, 0, 22, 2, 3, 24, 17, 19, 12, 8, 8, 14, 23, 23, 24,
+        8, 11, 8, 8, 8, 8, 8, 8, 8, 8, 6, 8, 8, 14, 0, 0, 0, 22, 17, 19, 8, 3, 24, 17, 18, 18, 19, 23, 23, 24,
+        18, 18, 18, 18, 18, 18, 18, 18, 18, 82, 84, 18, 18, 19, 0, 0, 0, 22, 22, 23, 18, 18, 14, 22, 23, 23, 24, 23, 23, 24,
         28, 28, 28, 28, 28, 28, 28, 28, 28, 82, 84, 28, 28, 29, 0, 2, 3, 8, 71, 71, 22, 23, 17, 22, 23, 23, 24, 28, 28, 29,
-        53, 53, 53, 2, 3, 4, 53, 53, 53, 82, 84, 53, 53, 0, 0, 12, 8, 8, 3, 4, 71, 71, 22, 22, 23, 23, 24, 4, 0, 0,
-        0, 0, 0, 7, 13, 9, 0, 0, 0, 82, 84, 0, 0, 0, 0, 17, 18, 12, 8, 8, 3, 3, 4, 22, 23, 23, 24, 8, 3, 3,
+        53, 53, 53, 2, 3, 4, 53, 53, 53, 82, 84, 53, 53, 0, 0, 12, 8, 8, 3, 23, 71, 71, 22, 22, 23, 23, 24, 27, 0, 0,
+        0, 0, 0, 7, 13, 9, 0, 0, 0, 82, 84, 0, 0, 0, 0, 17, 18, 12, 8, 8, 3, 3, 22, 22, 23, 23, 24, 8, 3, 3,
         0, 0, 0, 12, 13, 14, 0, 0, 0, 82, 84, 0, 0, 0, 0, 112, 28, 17, 7, 8, 8, 8, 8, 3, 3, 3, 3, 8, 8, 8,
         4, 0, 0, 17, 18, 19, 0, 0, 0, 82, 84, 0, 0, 0, 0, 0, 53, 20, 7, 8, 8, 8, 8, 8, 8, 14, 17, 19, 7, 8,
         9, 0, 0, 21, 23, 24, 0, 0, 0, 82, 84, 0, 0, 0, 0, 0, 0, 22, 17, 18, 18, 18, 18, 18, 18, 19, 22, 24, 17, 18,
@@ -100,16 +101,45 @@ return {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-        0, 0, 0, 0, 0, 0, 0, 1, 44, 0, 0, 45, 0, 0, 0, 0, 0, 0, 76, 76, 0, 0, 0, 0, 39, 40, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 0, 0, 1, 44, 0, 0, 45, 0, 0, 0, 0, 0, 2, 76, 76, 0, 0, 0, 0, 39, 40, 0, 0, 0, 0,
         0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 76, 76, 0, 46, 71, 71, 50, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 51, 71, 71, 52, 0, 0, 0,
-        0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 51, 71, 71, 60, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 0, 4, 0, 0, 0, 51, 71, 71, 52, 4, 0, 0,
+        0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 51, 71, 71, 60, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 56, 57, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 76, 76, 76, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76, 76
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 8,
+      name = "objects_mg",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 58,
+          name = "magicglass",
+          type = "",
+          shape = "rectangle",
+          x = 440,
+          y = 400,
+          width = 160,
+          height = 80,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        }
       }
     },
     {
@@ -129,7 +159,7 @@ return {
         {
           id = 3,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 0,
           y = 360,
@@ -142,7 +172,7 @@ return {
         {
           id = 4,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 320,
           y = 400,
@@ -153,35 +183,9 @@ return {
           properties = {}
         },
         {
-          id = 5,
-          name = "",
-          class = "",
-          shape = "rectangle",
-          x = 440,
-          y = 360,
-          width = 40,
-          height = 320,
-          rotation = 0,
-          visible = true,
-          properties = {}
-        },
-        {
-          id = 7,
-          name = "",
-          class = "",
-          shape = "rectangle",
-          x = 480,
-          y = 360,
-          width = 80,
-          height = 40,
-          rotation = 0,
-          visible = true,
-          properties = {}
-        },
-        {
           id = 8,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 560,
           y = 200,
@@ -194,7 +198,7 @@ return {
         {
           id = 9,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 0,
           y = 160,
@@ -205,48 +209,9 @@ return {
           properties = {}
         },
         {
-          id = 18,
-          name = "",
-          class = "",
-          shape = "rectangle",
-          x = 600,
-          y = 480,
-          width = 80,
-          height = 40,
-          rotation = 0,
-          visible = true,
-          properties = {}
-        },
-        {
-          id = 19,
-          name = "",
-          class = "",
-          shape = "rectangle",
-          x = 560,
-          y = 400,
-          width = 40,
-          height = 80,
-          rotation = 0,
-          visible = true,
-          properties = {}
-        },
-        {
-          id = 20,
-          name = "",
-          class = "",
-          shape = "rectangle",
-          x = 600,
-          y = 360,
-          width = 80,
-          height = 40,
-          rotation = 0,
-          visible = true,
-          properties = {}
-        },
-        {
           id = 21,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 680,
           y = 520,
@@ -259,7 +224,7 @@ return {
         {
           id = 34,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 800,
           y = 440,
@@ -272,7 +237,7 @@ return {
         {
           id = 35,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 920,
           y = 480,
@@ -285,7 +250,7 @@ return {
         {
           id = 38,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 1040,
           y = 440,
@@ -298,7 +263,7 @@ return {
         {
           id = 39,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 1080,
           y = 400,
@@ -311,7 +276,7 @@ return {
         {
           id = 40,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 1120,
           y = 440,
@@ -324,7 +289,7 @@ return {
         {
           id = 41,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 1120,
           y = 600,
@@ -337,7 +302,7 @@ return {
         {
           id = 42,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 1040,
           y = 560,
@@ -350,7 +315,7 @@ return {
         {
           id = 43,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 720,
           y = 600,
@@ -363,7 +328,7 @@ return {
         {
           id = 44,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 720,
           y = 400,
@@ -376,7 +341,7 @@ return {
         {
           id = 45,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 680,
           y = 320,
@@ -389,7 +354,7 @@ return {
         {
           id = 46,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 720,
           y = 360,
@@ -400,14 +365,27 @@ return {
           properties = {}
         },
         {
-          id = 47,
+          id = 56,
           name = "",
-          class = "",
+          type = "",
           shape = "rectangle",
-          x = 960,
-          y = 440,
-          width = 80,
+          x = 440,
+          y = 360,
+          width = 240,
           height = 40,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 57,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 440,
+          y = 480,
+          width = 240,
+          height = 200,
           rotation = 0,
           visible = true,
           properties = {}
@@ -431,7 +409,7 @@ return {
         {
           id = 1,
           name = "transition",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = -40,
           y = 200,
@@ -447,7 +425,7 @@ return {
         {
           id = 2,
           name = "footstep",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 40,
           y = 80,
@@ -460,7 +438,7 @@ return {
         {
           id = 10,
           name = "transition",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 360,
           y = 680,
@@ -476,7 +454,7 @@ return {
         {
           id = 11,
           name = "glitch_bg",
-          class = "",
+          type = "",
           shape = "rectangle",
           x = 120,
           y = 80,
@@ -485,6 +463,102 @@ return {
           rotation = 0,
           visible = true,
           properties = {}
+        },
+        {
+          id = 50,
+          name = "savepoint",
+          type = "",
+          shape = "rectangle",
+          x = 300,
+          y = 180,
+          width = 40,
+          height = 40,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["text1"] = "* These monochromatic cliffs seem to go on forever.",
+            ["text2"] = "* The power of a new adventure shines within you."
+          }
+        },
+        {
+          id = 61,
+          name = "interactable",
+          type = "",
+          shape = "rectangle",
+          x = 440,
+          y = 400,
+          width = 40,
+          height = 80,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["flagcheck"] = "!met_cat",
+            ["solid"] = true
+          }
+        },
+        {
+          id = 62,
+          name = "npc",
+          type = "",
+          shape = "point",
+          x = 560,
+          y = 440,
+          width = 0,
+          height = 0,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["actor"] = "cat",
+            ["flagcheck"] = "met_cat"
+          }
+        },
+        {
+          id = 63,
+          name = "script",
+          type = "",
+          shape = "rectangle",
+          x = 360,
+          y = 600,
+          width = 80,
+          height = 40,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["cutscene"] = "cliffside.cat_1",
+            ["flagcheck"] = "met_cat"
+          }
+        },
+        {
+          id = 65,
+          name = "transition",
+          type = "",
+          shape = "rectangle",
+          x = 960,
+          y = 470,
+          width = 80,
+          height = 40,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["map"] = "grey_cliffside/cave_1",
+            ["marker"] = "entry"
+          }
+        },
+        {
+          id = 68,
+          name = "transition",
+          type = "",
+          shape = "rectangle",
+          x = 1200,
+          y = 480,
+          width = 40,
+          height = 120,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["map"] = "grey_cliffside/cliffside_right_3",
+            ["marker"] = "west"
+          }
         }
       }
     },
@@ -505,7 +579,7 @@ return {
         {
           id = 15,
           name = "entry",
-          class = "",
+          type = "",
           shape = "point",
           x = 40,
           y = 280,
@@ -518,7 +592,7 @@ return {
         {
           id = 16,
           name = "entry2",
-          class = "",
+          type = "",
           shape = "point",
           x = 400,
           y = 640,
@@ -527,6 +601,77 @@ return {
           rotation = 0,
           visible = true,
           properties = {}
+        },
+        {
+          id = 51,
+          name = "spawn",
+          type = "",
+          shape = "point",
+          x = 320,
+          y = 280,
+          width = 0,
+          height = 0,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 66,
+          name = "cave_exit",
+          type = "",
+          shape = "point",
+          x = 1000,
+          y = 550,
+          width = 0,
+          height = 0,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 67,
+          name = "east",
+          type = "",
+          shape = "point",
+          x = 1160,
+          y = 540,
+          width = 0,
+          height = 0,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        }
+      }
+    },
+    {
+      type = "objectgroup",
+      draworder = "topdown",
+      id = 9,
+      name = "controllers",
+      class = "",
+      visible = true,
+      opacity = 1,
+      offsetx = 0,
+      offsety = 0,
+      parallaxx = 1,
+      parallaxy = 1,
+      properties = {},
+      objects = {
+        {
+          id = 64,
+          name = "toggle",
+          type = "",
+          shape = "point",
+          x = 640,
+          y = 440,
+          width = 0,
+          height = 0,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["flag"] = "!cliffsidecat_1",
+            ["target"] = { id = 62 }
+          }
         }
       }
     },

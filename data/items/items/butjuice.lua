@@ -51,16 +51,11 @@ function item:init()
         susie = "Hell'd you call this!?",
         ralsei = "I made this.",
         noelle = "B-Brainfreeze! ... kidding!",
+		dess = "[joke censored from mod]",
         jamm = "Tastes... Dignified.",
+        ["jamm+marcy"] = "Marcy, it's not THAT funny. ...*snrk*",
         noel = "Why is it fluctuating?",
     }
-end
-
-function item:getReaction(user_id, reactor_id)
-    if user_id == "jamm" and reactor_id == user_id and Game:getFlag("marcy_joined") then
-		return "Marcy, it's not THAT funny. ...*snrk*"
-	end
-	return super.getReaction(self, user_id, reactor_id)
 end
 
 return item

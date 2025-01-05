@@ -1,9 +1,11 @@
-modRequire("scripts/main/warp_bin")
-modRequire("scripts/main/utils_general")
+--modRequire("scripts/main/warp_bin")
+--modRequire("scripts/main/utils_general")
 
 function Mod:init()
     print("Loaded "..self.info.name.."!")
-    self:registerShaders()
+    self.border_shaders = {}
+
+    self:setMusicPitches()
 end
 
 function Mod:postInit(new_file)
@@ -15,7 +17,7 @@ function Mod:postInit(new_file)
         },
     }
     Kristal.callEvent("setItemsList", items_list)
-    
+
     if new_file then
         Game:setFlag("library_love", 1)
         Game:setFlag("library_experience", 0)
@@ -24,12 +26,81 @@ function Mod:postInit(new_file)
         if Game.save_name == "SUPER" then
             Game.inventory:addItem("chaos_emeralds")
         end
-
         local baseParty = {}
-        table.insert(baseParty, "hero") -- should be just Hero for now
-        Game:setFlag("_unlockedPartyMembers", baseParty)
+        if Game.save_name == "DESS" then
+            Game:setFlag("Dess_Mode", true)
+
+            table.insert(baseParty, "dess") -- :heckyeah:
+            Game:setFlag("_unlockedPartyMembers", baseParty)
+            Game:addPartyMember("dess")
+            Game:removePartyMember("hero")
+        else
+            table.insert(baseParty, "hero") -- should be just Hero for now
+            Game:setFlag("_unlockedPartyMembers", baseParty)
+        end
 
         Game.world:startCutscene("_main.introcutscene")
+    end
+    
+    if not Game:getFlag("FUN") then
+        local random = math.random(1,100)
+        Game:setFlag("FUN", random)
+    end
+
+    self:initializeImportantFlags(new_file)
+end
+
+function Mod:initializeImportantFlags(new_file)
+    self.pc_gifts_data = {
+        UNDERTALE = {
+            file = "undertale.ini",
+            item_id = "heart_locket",
+            prefix_os = {Windows = "Local/UNDERTALE", Linux = "%XDG_CONFIG_HOME%/UNDERTALE", OS_X = "com.tobyfox.undertale"},
+            wine_steam_appid = 391540
+        },
+        DELTARUNE = {
+            file = "dr.ini",
+            item_id = "egg",
+            prefix_os = {Windows = "Local/DELTARUNE", Linux = "%XDG_CONFIG_HOME%/DELTARUNE", OS_X = "com.tobyfox.deltarune"},
+            wine_steam_appid = 1690940
+        },
+        UTY = {
+            name = "UNDERTALE YELLOW",
+            file = {"Save.sav", "Save02.sav", "Controls.sav", "tempsave.sav"},
+            item_id = "wildrevolver",
+            prefix_os = {Windows = "Local/Undertale_Yellow", Linux = "%XDG_CONFIG_HOME%/Undertale_Yellow"}
+        },
+        PT = {
+            name = "PIZZA TOWER",
+            file = {"saves/saveData1.ini", "saves/saveData2.ini", "saves/saveData3.ini"},
+            item_id = "pizza_toque",
+            -- Not sure what the Mac OS_X or Linux directories for PT are.
+            -- If anyone else knows tho, feel free to add them in here lol.
+            prefix_os = {Windows = "Roaming/PizzaTower_GM2"},
+            wine_steam_appid = 2231450
+        },
+
+        -- Use "KR_" as a prefix to check for a Kristal Mod instead
+        KR_frozen_heart = {item_id = "angelring"},
+        KR_wii_bios = {item_id = "wiimote"},
+        ["KR_acj_deoxynn/act1"] = {name = "Deoxynn Act 1", item_id = "victory_bell"}
+    }
+    local function generateStatusTable(data)
+        local status = {}
+        for game, info in pairs(data) do
+            status[game] = info.received or false
+        end
+        return status
+    end
+    if Game:getFlag("pc_gifts_data") then
+        assert(not new_file)
+        Game:setFlag("pc_gifts_status", generateStatusTable(Game:getFlag("pc_gifts_data")))
+        Game:setFlag("pc_gifts_data", nil)
+    end
+    if not Game:getFlag("pc_gifts_status") then
+        Game:setFlag("pc_gifts_status", generateStatusTable(self.pc_gifts_data))
+    else
+        Game:setFlag("pc_gifts_status", Utils.merge(generateStatusTable(self.pc_gifts_data), Game:getFlag("pc_gifts_status")))
     end
 end
 
@@ -52,6 +123,13 @@ function Mod:addGlobalEXP(exp)
     return leveled_up
 end
 
+function Mod:setMusicPitches()
+
+    MUSIC_PITCHES["deltarune/THE_HOLY"] = 0.9
+
+
+end
+
 function Mod:getGlobalNextLvRequiredEXP()
     return Kristal.getLibConfig("library_main", "global_xp_requirements")[Game:getFlag("library_love") + 1] or 0
 end
@@ -66,22 +144,25 @@ function Mod:unlockQuest(quest, silent)
     end
 end
 
-function Mod:registerShaders()
-    self.shaders = {}
-    for _,path,shader in Registry.iterScripts("shaders/") do
-        assert(shader ~= nil, '"shaders/'..path..'.lua" does not return value')
-        self.shaders[path] = shader
-    end
+function Mod:registerDebugOptions(debug)
+    debug:registerOption("main", "Party Menu", "Enter the  Party  Menu.", 
+        function () 
+            Game.world:openMenu(CharacterMenu()) 
+            debug:closeMenu()
+        end
+    )
 end
 
-function Mod:onBorderDraw(border_sprite)
-    if border_sprite == "cliffside" then
+function Mod:onMapMusic(map, music)
+    local cur_song = Game:getFlag("curJukeBoxSong")
 
-        if math.random(10) == 1 then 
-            love.graphics.setShader(Mod.shaders["glitch"])
-            love.graphics.draw(Assets.getTexture("borders/cliffside"), 0, 0, 0, BORDER_SCALE)
+    if music == "dev" then
+        if cur_song then
+            return cur_song
+        elseif Game:isDessMode() then
+            return "gimmieyourwalletmiss"
+        else
+            return "greenroom"
         end
-
-        love.graphics.setShader() 
     end
 end

@@ -9,6 +9,7 @@ function character:init()
     -- Actor (handles sprites)
     self:setActor("noelle")
     self:setLightActor("noelle_lw")
+    self:setDarkTransitionActor("noelle_dark_transition")
 
     -- Display level (saved to the save file)
     self.love = 1
@@ -20,7 +21,8 @@ function character:init()
     self.soul_priority = 1
     -- The color of this character's soul (optional, defaults to red)
     self.soul_color = {1, 1, 1}
-
+    -- Is this party member a monster? (optional)
+    self.monster = true
     -- Whether the party member can act / use spells
     self.has_act = false
     self.has_spells = true
@@ -78,6 +80,8 @@ function character:init()
     self.attack_box_color = {1, 1, 0}
     -- X-Action color (for the color of X-Action menu items) (defaults to the main color)
     self.xact_color = {1, 1, 0.5}
+
+    self.icon_color = {1, 1, 0}
 
     -- Head icon in the equip / power menu
     self.menu_icon = "party/noelle/head"

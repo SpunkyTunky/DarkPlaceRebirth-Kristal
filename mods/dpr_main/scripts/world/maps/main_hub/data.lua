@@ -10,10 +10,11 @@ return {
   tilewidth = 40,
   tileheight = 40,
   nextlayerid = 11,
-  nextobjectid = 74,
+  nextobjectid = 82,
   properties = {
     ["border"] = "mainhub",
-    ["music"] = "mainhub"
+    ["music"] = "mainhub",
+    ["name"] = "Floor One - Central Hub"
   },
   tilesets = {
     {
@@ -21,6 +22,11 @@ return {
       firstgid = 1,
       filename = "../../tilesets/main_area.tsx",
       exportfilename = "../../tilesets/main_area.lua"
+    },
+    {
+      name = "other-objects",
+      firstgid = 209,
+      filename = "../../tilesets/other-objects.tsx"
     }
   },
   layers = {
@@ -791,8 +797,8 @@ return {
           name = "npc",
           type = "",
           shape = "point",
-          x = 460,
-          y = 160,
+          x = 550,
+          y = 150,
           width = 0,
           height = 0,
           rotation = 0,
@@ -814,12 +820,7 @@ return {
           rotation = 0,
           visible = true,
           properties = {
-            ["text1"] = "* HOW TO USE THE WARP BIN\n* A two-step guide to all your dumpster-traveling needs.",
-            ["text2"] = "* STEP 1:\nEnter a valid code on the keypad beneath the bin's lid.",
-            ["text3"] = "* STEP 2:\nHappy traveling!",
-            ["text4"] = "* (NOTICE: If you ever get lost or run out of codes to input, type FLOORONE get back here.)",
-            ["text5"] = "* (Management is also not responsible for any odors emitting from the bin.)",
-            ["text6"] = "* (This is due to a certain public menace throwing cans of Mug Root Beer into it.)"
+            ["cutscene"] = "hub.warp_bin_note"
           }
         },
         {
@@ -836,6 +837,98 @@ return {
           properties = {
             ["skin"] = "cyber_city"
           }
+        },
+        {
+          id = 74,
+          name = "transition",
+          type = "",
+          shape = "rectangle",
+          x = 420,
+          y = 60,
+          width = 80,
+          height = 40,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["map"] = "hub_elevator",
+            ["marker"] = "entry"
+          }
+        },
+        {
+          id = 76,
+          name = "dogconegroup",
+          type = "",
+          shape = "rectangle",
+          x = -40,
+          y = 200,
+          width = 40,
+          height = 40,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["default_state"] = true
+          }
+        },
+        {
+          id = 77,
+          name = "dogconegroup",
+          type = "",
+          shape = "rectangle",
+          x = -40,
+          y = 240,
+          width = 40,
+          height = 40,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["default_state"] = true
+          }
+        },
+        {
+          id = 78,
+          name = "",
+          type = "",
+          shape = "rectangle",
+          x = 424,
+          y = 926,
+          width = 72,
+          height = 104,
+          rotation = 0,
+          gid = 210,
+          visible = true,
+          properties = {
+            ["cond"] = "not Noel:loadNoel() and Game:getFlag(\"FUN\") == 99"
+          }
+        },
+        {
+          id = 80,
+          name = "interactable",
+          type = "",
+          shape = "rectangle",
+          x = 424,
+          y = 900,
+          width = 72,
+          height = 20,
+          rotation = 0,
+          visible = true,
+          properties = {
+            ["cond"] = "not Noel:loadNoel() and Game:getFlag(\"FUN\") == 99",
+            ["cutscene"] = "shared_cutscenes.greyarea",
+            ["solid"] = true
+          }
+        },
+        {
+          id = 81,
+          name = "NewYearCountDown",
+          type = "",
+          shape = "rectangle",
+          x = 760,
+          y = 118,
+          width = 120,
+          height = 92,
+          rotation = 0,
+          visible = true,
+          properties = {}
         }
       }
     },
@@ -964,6 +1057,19 @@ return {
           shape = "point",
           x = 460,
           y = 644,
+          width = 0,
+          height = 0,
+          rotation = 0,
+          visible = true,
+          properties = {}
+        },
+        {
+          id = 75,
+          name = "entry_elevator",
+          type = "",
+          shape = "point",
+          x = 460,
+          y = 170,
           width = 0,
           height = 0,
           rotation = 0,

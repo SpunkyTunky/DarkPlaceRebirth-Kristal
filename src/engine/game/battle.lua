@@ -142,6 +142,16 @@ function Battle:init()
 	self.superpower = false
 
 	self.super_timer = 0
+	
+    -- Base pitch for the music to return to when not using timeslow.
+    -- This must be changed along with music.pitch in order to correctly change the music's pitch.
+    self.music.basepitch = self.music.pitch
+
+    if Game:getSoulPartyMember().pp > 0 then
+        self.no_buff_loop = true
+    else
+        self.no_buff_loop = false
+    end
 
     self.month = tonumber(os.date("%m"))
     self.day = tonumber(os.date("%d"))
@@ -298,6 +308,10 @@ function Battle:postInit(state, encounter)
 
     if not self.encounter:onBattleInit() then
         self:setState(state)
+    end
+
+    if Game.bossrush_encounters and not self.encounter.no_dojo_bg then
+        self.dojobg = self:addChild(DojoBG())
     end
 end
 
@@ -586,8 +600,18 @@ function Battle:onStateChange(old,new)
         end
 
         if self.killed then
+            local levelup = false
             for i,v in ipairs(self.party) do
+                local love = v.chara.love
                 v.chara:addExp(self.xp)
+                if v.chara.love > love then
+                    levelup = true
+                end
+            end
+            if levelup then
+                win_text = "* You won!\n* Got " .. self.xp .. " EXP and " .. self.money .. " "..Game:getConfig("darkCurrencyShort")..".\n* Your LOVE increased!"
+
+                Assets.playSound("levelup", 1, 1)
             end
         end
 
@@ -885,6 +909,19 @@ function Battle:onStateChange(old,new)
     end
 
     self.encounter:onStateChange(old,new)
+	
+    if old == "INTRO" then
+        self.music.basepitch = self.music.pitch
+    end
+	
+    if self.discoball then
+        -- For some reason this happens twice
+        if new == "ACTIONSELECT" then
+            self.discoball.tweendir = 1
+        elseif new == "ENEMYDIALOGUE" or new == "DEFENDINGBEGIN" or new == "TRANSITIONOUT" then
+            self.discoball.tweendir = -1
+        end
+    end
 end
 
 function Battle:getSoulLocation(always_origin)
@@ -933,6 +970,13 @@ function Battle:swapSoul(object)
     object.layer = self.soul.layer
     self.soul = object
     self:addChild(object)
+	
+    --Timeslow/Focus placebo stuff
+    Game.stage.timescale = 1
+	Game.battle.music.pitch = Game.battle.music.basepitch
+	Game.battle.soul.vhsfx.active = false
+	Game.battle.soul.outlinefx.active = false
+	Input.clear("focus_placebo")
 end
 
 function Battle:resetAttackers()
@@ -2378,6 +2422,24 @@ function Battle:returnToWorld()
     self.encounter.defeated_enemies = self.defeated_enemies
     Game.battle = nil
     Game.state = "OVERWORLD"
+    if Game.bossrush_encounters then
+        table.remove(Game.bossrush_encounters, 1)
+        if #Game.bossrush_encounters > 0 then
+            local boss = Game:getBossRef(Game.bossrush_encounters[1])
+            if boss.mod == Mod.info.id then
+                Game:encounter(boss.encounter)
+            else
+                Kristal.swapIntoMod(boss.mod)
+            end
+        else
+            Game.bossrush_encounters = nil
+            -- TODO: Better default
+            local returning = Game:getFlag("bossrush_return", {mod = "dpr_main", map = "main_hub"})
+            -- Can't use Game:swapIntoMod because it kicks you
+            -- back to the title screen before that happens
+            Kristal.swapIntoMod(returning.mod, false, returning.map)
+        end
+    end
 end
 
 function Battle:setActText(text, dont_finish)

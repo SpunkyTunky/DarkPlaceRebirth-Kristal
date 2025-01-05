@@ -259,7 +259,15 @@ function PartyMember:init()
     self.default_opinion = 50
     
     -- this fucking sucks but i don't care lol
+    -- based
+	--   -char
     self.mhp_damage = 0
+
+    -- protection points for soul shield mechanic
+    self.pp = 0
+
+    -- whether or not the next attack should be reflected
+	self.reflectNext = false
 end
 
 -- Callbacks
@@ -304,6 +312,9 @@ function PartyMember:onPowerDeselect(menu) end
 ---@param y number The y-coordinate of the text
 ---@param menu DarkPowerMenu The current menu instance
 function PartyMember:drawPowerStat(index, x, y, menu) end
+
+--- Same thing as the one above but for the party member's Equip menu.
+function PartyMember:drawEquipStat(menu) end
 
 --- *(Override)* Called whenever the party member's data is saved
 ---@param data PartyMemberSaveData
@@ -362,6 +373,8 @@ function PartyMember:getWeaponIcon() return self.weapon_icon end
 
 function PartyMember:getHealth() return Game:isLight() and self.lw_health or self.health end
 function PartyMember:getSavedMHP() return self.saved_mhp end
+
+function PartyMember:getStarmanTheme() return "default" end
 ---@param light? boolean
 function PartyMember:getBaseStats(light)
     if light or (light == nil and Game:isLight()) then
@@ -434,6 +447,9 @@ function PartyMember:getHeadIconOffset() return unpack(self.head_icon_offset or 
 ---@return number x
 ---@return number y
 function PartyMember:getMenuIconOffset() return unpack(self.menu_icon_offset or {0, 0}) end
+---@return number x
+---@return number y
+function PartyMember:getNameOffset() return unpack(self.name_offset or {0, 0}) end
 
 function PartyMember:getGameOverMessage() return self.gameover_message end
 
@@ -533,6 +549,12 @@ function PartyMember:resetBuffs()
     self.stat_buffs = {}
 end
 
+--- Returns the min
+---@return string?
+function PartyMember:getMinimemberID()
+    return nil
+end
+
 --- Gets this party member's reaction for using or seeing someone use a particular item \
 --- *By default, calls [`item:getReaction()`](lua://Item.getReaction) for reaction text*
 ---@param item Item
@@ -540,7 +562,7 @@ end
 ---@return string?
 function PartyMember:getReaction(item, user)
     if item then
-        return item:getReaction(user.id, self.id)
+        return item:getReaction(user.id, self.id, self:getMinimemberID())
     end
 end
 
@@ -898,23 +920,26 @@ end
 
 ---@param data table
 function PartyMember:loadEquipment(data)
-    if type(data.weapon) == "table" then
-        if Registry.getItem(data.weapon.id) then
-            local weapon = Registry.createItem(data.weapon.id)
-            if weapon then
-                weapon:load(data.weapon)
-                self:setWeapon(weapon)
+    self:setWeapon(nil)
+    if data.weapon then
+        if type(data.weapon) == "table" then
+            if Registry.getItem(data.weapon.id) then
+                local weapon = Registry.createItem(data.weapon.id)
+                if weapon then
+                    weapon:load(data.weapon)
+                    self:setWeapon(weapon)
+                else
+                    Kristal.Console:error("Could not load weapon \""..data.weapon.id.."\"")
+                end
             else
-                Kristal.Console:error("Could not load weapon \""..data.weapon.id.."\"")
+                Kristal.Console:error("Could not load weapon \"".. data.weapon.id .."\"")
             end
         else
-            Kristal.Console:error("Could not load weapon \"".. data.weapon.id .."\"")
-        end
-    else
-        if Registry.getItem(data.weapon) then
-            self:setWeapon(data.weapon)
-        else
-            Kristal.Console:error("Could not load weapon \"".. (data.weapon or "nil") .."\"")
+            if Registry.getItem(data.weapon) then
+                self:setWeapon(data.weapon)
+            else
+                Kristal.Console:error("Could not load weapon \"".. (data.weapon or "nil") .."\"")
+            end
         end
     end
     for i = 1, 2 do

@@ -7,6 +7,7 @@
 ---@field shop              Shop
 ---@field gameover          GameOver
 ---@field legend            Legend
+---@field dogcheck          DogCheck
 ---@field inventory         DarkInventory|LightInventory
 ---@field dark_inventory    DarkInventory
 ---@field light_inventory   LightInventory
@@ -14,7 +15,7 @@
 ---@field lock_movement     boolean
 ---@field key_repeat        boolean
 ---@field started           boolean
----@field border            string
+---@field border            Border
 ---
 ---@field previous_state    string
 ---@field state             string
@@ -65,6 +66,7 @@ function Game:clear()
     self.shop = nil
     self.gameover = nil
     self.legend = nil
+    self.dogcheck = nil
     self.inventory = nil
     self.quick_save = nil
     self.lock_movement = false
@@ -91,6 +93,9 @@ function Game:enter(previous_state, save_id, save_name, fade)
     Kristal.callEvent(KRISTAL_EVENT.init)
 
     self.lock_movement = false
+
+    self:initTaunt()
+    self:initBattleTaunt()
 
     fade = fade ~= false
     if type(save_id) == "table" then
@@ -132,22 +137,33 @@ function Game:leave()
     self.quick_save = nil
 end
 
----@return string
+---@return Border
 function Game:getBorder()
     return self.border
 end
 
----@param border?   string
+---@param border?   string|Border
 ---@param time?     number
 function Game:setBorder(border, time)
     time = time or 1
-
+    local new_border_id = border
+    if type(border) ~= "string" then
+        new_border_id = border.id
+    end
+    local current_border_id
+    if Kristal.getBorder() then
+        current_border_id = Kristal.getBorder().id
+    end
     if time == 0 then
         Kristal.showBorder(0)
-    elseif time > 0 and Kristal.getBorder() ~= border then
+    elseif time > 0 and current_border_id ~= new_border_id then
         Kristal.transitionBorder(time)
     end
 
+    if type(border) == "string" then
+        local border_class = Registry.createBorder(border)
+        if border_class then border = border_class end
+    end
     self.border = border
 end
 
@@ -202,6 +218,8 @@ function Game:getActiveMusic()
         return self.gameover.music
     elseif self.state == "LEGEND" then
         return self.legend.music
+    elseif self.state == "DOGCHECK" then
+        return self.dogcheck.music
     else
         return self.music
     end
@@ -249,13 +267,15 @@ function Game:save(x, y)
 
         level_up_count = self.level_up_count,
 
-        border = self.border,
+        border = self.border.id,
 
         temp_followers = self.temp_followers,
 
         flags = self.flags,
 
-        total_bp = self.total_bp
+        total_bp = self.total_bp,
+
+        bossrush_encounters = self.bossrush_encounters,
     }
 
     if x then
@@ -316,7 +336,7 @@ function Game:load(data, index, fade)
     BORDER_ALPHA = 0
     Kristal.showBorder(1)
 
-    -- states: OVERWORLD, BATTLE, SHOP, GAMEOVER, LEGEND
+    -- states: OVERWORLD, BATTLE, SHOP, MINIGAME, GAMEOVER, LEGEND, DOGCHECK
     self.state = "OVERWORLD"
 
     self.stage = Stage()
@@ -402,6 +422,8 @@ function Game:load(data, index, fade)
         end
     end
 
+    self.bossrush_encounters = data.bossrush_encounters
+
     self.level_up_count = data.level_up_count or 0
 
     self.money = data.money or Kristal.getModOption("money") or 0
@@ -421,7 +443,7 @@ function Game:load(data, index, fade)
 
     local map = nil
     local room_id = data.room_id or Kristal.getModOption("map")
-    if room_id then
+    if room_id and not self.bossrush_encounters then
         map = Registry.createMap(room_id, self.world)
 
         self.light = map.light or false
@@ -501,7 +523,17 @@ function Game:load(data, index, fade)
             end
         end
     end
-
+    -- Make sure it only comes back when you load a file, not when switching between DLCs
+    if not Game:getFlag("is_swapping_mods", false) and Game:getFlag("oddstone_tossed", false) then
+        -- If you threw away the Odd Stone, bring it back
+        if self.light then
+            self.inventory:addItem("light/grey_marble")
+        else
+            self.inventory:addItem("oddstone")
+        end
+        Game:setFlag("oddstone_tossed", false)
+    end
+    Game:setFlag("is_swapping_mods", false)
     -- END SAVE FILE VARIABLES --
 
     Kristal.callEvent(KRISTAL_EVENT.load, data, self.is_new_file, index)
@@ -526,6 +558,9 @@ function Game:load(data, index, fade)
         elseif Kristal.getModOption("shop") then
             self:enterShop(Kristal.getModOption("shop"), {menu = true})
         end
+    elseif self.bossrush_encounters then
+        self:setBorder("battle")
+        self:encounter(self:getBossRef(self.bossrush_encounters[1]).encounter)
     end
 
     Kristal.callEvent(KRISTAL_EVENT.postLoad)
@@ -591,7 +626,8 @@ end
 
 ---@param x? number
 ---@param y? number
-function Game:gameOver(x, y)
+---@param sf? boolean
+function Game:gameOver(x, y, sf)
     Kristal.hideBorder(0)
 
     self.state = "GAMEOVER"
@@ -600,9 +636,15 @@ function Game:gameOver(x, y)
     if self.shop     then self.shop    :remove() end
     if self.gameover then self.gameover:remove() end
     if self.legend   then self.legend  :remove() end
+    if self.dogcheck then self.dogcheck:remove() end
 
-    self.gameover = GameOver(x or 0, y or 0)
-    self.stage:addChild(self.gameover)
+    if Game:getFlag("FUN", 0) ~= 18 --[[0xE+0xA]] and not sf then
+        self.gameover = GameOver(x or 0, y or 0)
+        self.stage:addChild(self.gameover)
+    else
+        self.gameover = GameOverSF(sf == "bearers" and true or nil)
+        self.stage:addChild(self.gameover)
+    end
 end
 
 ---@param cutscene          string
@@ -739,6 +781,25 @@ function Game:startMinigame(game)
     Game.minigame:postInit()
 
     Game.stage:addChild(Game.minigame)
+end
+
+function Game:dogCheck(variant)
+    Kristal.hideBorder(0)
+
+    self.state = "DOGCHECK"
+    if self.battle   then self.battle  :remove() end
+    if self.world    then self.world   :remove() end
+    if self.shop     then self.shop    :remove() end
+    if self.gameover then self.gameover:remove() end
+    if self.legend   then self.legend  :remove() end
+    if self.dogcheck then self.dogcheck:remove() end
+
+    if variant then
+        self.dogcheck = DogCheck(variant)
+    else
+        self.dogcheck = DogCheck()
+    end
+    self.stage:addChild(self.dogcheck)
 end
 
 function Game:setPresenceState(details)
@@ -1051,7 +1112,7 @@ end
 ---@param amount        number
 ---@param dont_clamp?   boolean
 function Game:setTension(amount, dont_clamp)
-    Game.tension = dont_clamp and amount or Utils.clamp(amount, 0, Game.max_tension)
+    Game.tension = dont_clamp and amount or Utils.clamp(amount, 0, Game:getMaxTension())
 end
 
 ---@return number
@@ -1066,7 +1127,9 @@ end
 
 ---@return number
 function Game:getMaxTension()
-    return Game.max_tension or 100
+    local max_tension = Game.max_tension or 100
+    max_tension = max_tension + (50 * self:getBadgeEquipped("tension_plus"))
+    return max_tension
 end
 
 -- [Kristal.swapIntoMod](lua://Kristal.swapIntoMod) but it happens after update
@@ -1122,6 +1185,26 @@ function Game:update()
     end
 
     Kristal.callEvent(KRISTAL_EVENT.postUpdate, DT)
+
+    self:updateTaunt()
+    self:updateBattleTaunt()
+
+    if self.save_name == "MERG" then
+        for _, party in ipairs(self.party) do
+            if party.health > 1 then
+                party.health = 1
+            end
+            if party.stats.health ~= 1 then
+                party.stats.health = 1
+            end
+        end
+        if self.battle then
+            self.battle:targetAll()
+            for _,enemy in ipairs(self.battle:getActiveEnemies()) do
+                enemy.current_target = "ALL"
+            end
+        end
+    end
 
     for _, badge in ipairs(self:getBadgeStorage()) do
         badge:update(badge.equipped)
@@ -1198,14 +1281,28 @@ end
 
 ---@param ignore_light? boolean -- if you still want some stats etc. despite being in LW
 function Game:getBadgeStorage(ignore_light)
-    if Game:isLight() and not ignore_light then return {} end
+    if self:isLight() and not ignore_light then return {} end
     local inventory ---@type DarkInventory
-    if not Game:isLight() then
-        inventory = Game.inventory
+    if not self:isLight() then
+        inventory = self.inventory
     else
-        inventory = Game.inventory:getItemByID("light/ball_of_junk").inventory
+        inventory = self.dark_inventory
     end
+    if not inventory then return {} end
     return inventory:getStorage("badges")
+end
+
+---@return {mod: string, encounter: string} boss?
+function Game:getBossRef(id)
+    for mod_id, mod in pairs(Kristal.Mods.data) do
+        if mod.dlc and mod.dlc.bosses then
+            if mod.dlc.bosses[id] then
+                local t = Utils.copy(mod.dlc.bosses[id])
+                t.mod = t.mod or mod_id
+                return t
+            end
+        end
+    end
 end
 
 function Game:getUsedBadgePoints(ignore_light)
@@ -1227,6 +1324,147 @@ function Game:getBadgeEquipped(badge, ignore_light)
     end
     return total_count
 end
+
+--- Taunt Mechanic
+function Game:isTauntingAvaliable()
+    if self.let_me_taunt then return true end
+    if self.save_name:upper() == "PEPPINO" then return true end
+
+    for _,party in ipairs(self.party) do
+        if party:checkArmor("pizza_toque") then return true end
+    end
+    return false
+end
+
+--Overworld taunt
+function Game:initTaunt()
+    self.taunt_lock_movement = false
+    --[[
+	Utils.hook(Actor, "init", function(orig, self)
+        orig(self)
+        self.taunt_sprites = {}
+    end)
+	--]]
+    Utils.hook(Player, "isMovementEnabled",
+        ---@overload fun(orig:function, self:Player) : boolean
+        function(orig, self)
+            return orig(self)
+                and not Game.taunt_lock_movement
+        end
+    )
+
+end
+
+function Game:updateTaunt()
+    if not (OVERLAY_OPEN or TextInput.active)
+        and self:isTauntingAvaliable()
+        and Input.pressed("taunt", false)
+        and not self.taunt_lock_movement
+        and (self.state == "OVERWORLD" and self.world.state == "GAMEPLAY"
+            and not self.world:hasCutscene() and not self.lock_movement)
+    then
+        -- awesome workaround for run_anims
+        self.world.player:setState("WALK")
+        self.world.player.running = false
+        for _, follower in ipairs(self.world.followers) do
+            if follower:getTarget() == self.world.player and follower.state == "RUN" then
+                follower.state_manager:setState("WALK")
+                follower.running = false
+            end
+        end
+        self.world.player:resetFollowerHistory()
+        self.taunt_lock_movement = true
+
+        Assets.playSound("taunt", 0.5, Utils.random(0.9, 1.1))
+
+        for _,chara in ipairs(self.stage:getObjects(Character)) do
+            if not chara.actor or not chara.visible then goto continue end
+
+            -- workaround due to actors being loaded first by registry
+            local sprites = chara.actor.getTauntSprites and chara.actor:getTauntSprites() or chara.actor.taunt_sprites
+            if not sprites or #sprites <= 0 then goto continue end
+
+            local shine = Sprite("effects/taunt", chara:getRelativePos(chara.width/2, chara.height/2))
+            shine:setOrigin(0.5, 0.5)
+            shine:setScale(1)
+			chara.layer = chara.layer + 0.1
+            shine.layer = chara.layer - 0.1
+            self.world:addChild(shine)
+
+            chara.sprite:set(Utils.pick(sprites))
+            shine:play(1/30, false, function()
+                shine:remove()
+                chara:resetSprite()
+			    chara.layer = chara.layer - 0.1
+            end)
+
+            ::continue::
+        end
+
+        self.world.timer:after(1/3, function()
+            self.taunt_lock_movement = false
+        end)
+    end
+end
+
+--Battle taunt
+function Game:initBattleTaunt()
+    self.taunt_cooldown = 0
+    self.state_blacklist = {
+        "DEFENDINGBEGIN",
+        "DEFENDING", -- handled by the soul itself, so this is ignored
+        "DEFENDINGEND",
+        "ENEMYDIALOGUE",
+        "ATTACKING",
+        "ACTIONS",
+        "ACTIONSDONE",
+        "INTRO",
+        "TRANSITION",
+        "TRANSITIONOUT"
+    }
+end
+
+function Game:updateBattleTaunt()
+    if
+        self:isTauntingAvaliable()
+        and Input.pressed("taunt", false)
+        and self.taunt_cooldown == 0
+        and (Game.state == "BATTLE" and not Game.battle:hasCutscene())
+        and not Utils.containsValue(self.state_blacklist, Game.battle.state)
+        and not (OVERLAY_OPEN or TextInput.active)
+    then
+        self.taunt_cooldown = 2.1
+
+        Assets.playSound("taunt", 0.5, Utils.random(0.9, 1.1))
+
+        for _,chara in ipairs(Game.battle.party) do
+            if not chara.actor or chara.is_down then goto continue end
+
+            -- workaround due of actors being loaded first by registry
+            local sprites = chara.actor.getTauntSprites and chara.actor:getTauntSprites() or chara.actor.taunt_sprites
+            if not sprites or #sprites <= 0 then goto continue end
+
+            local shine = Sprite("effects/taunt", chara:getRelativePos(chara.width/2, chara.height/2))
+            shine:setOrigin(0.5, 0.5)
+            shine:setScale(1)
+            shine.layer = chara.layer - 0.1
+            Game.battle:addChild(shine)
+
+            chara:toggleOverlay(true)
+            chara.overlay_sprite:setSprite(Utils.pick(sprites))
+            shine:play(1/30, false, function()
+                shine:remove()
+                chara:toggleOverlay(false)
+            end)
+
+            ::continue::
+        end
+
+    end
+
+    self.taunt_cooldown = Utils.approach(self.taunt_cooldown, 0, DT)
+end
+
 
 --stuff for Noel the Noel-body
 
@@ -1260,11 +1498,48 @@ function Game:loadNoel()
     return nil
 end
 
+function Game:getGlobalFlag(flag, default)
+    local flags
+
+    if love.filesystem.getInfo("saves/global_flags.json") then
+        flags = JSON.decode(love.filesystem.read("saves/global_flags.json"))
+    else
+        return false
+    end
+
+    local result = flags[flag]
+    if result == nil then
+        return default
+    else
+        return result
+    end
+end
+
+function Game:setGlobalFlag(flag_name, value)
+    local data
+    if love.filesystem.getInfo("saves/global_flags.json") then
+        data = JSON.decode(love.filesystem.read("saves/global_flags.json"))
+    else
+        data = {}
+    end
+
+
+    local new_data = {[flag_name] = value}
+    if new_data then
+        for k, v in pairs(new_data) do
+            data[k] = v
+        end
+    end
+
+    love.filesystem.write("saves/global_flags.json", JSON.encode(data))
+end
+
 function Game:getUISkin()
     return Game:isLight() and "light" or "dark"
 end
 
 function Game:unlockPartyMember(member)
+    Kristal.callEvent(KRISTAL_EVENT.onDPUnlockPartyMember, member)
     local currentUnlockedParty = Game:getFlag("_unlockedPartyMembers")
     if Game:getPartyMember(member) then
         table.insert(currentUnlockedParty, member)
@@ -1280,6 +1555,26 @@ end
 
 function Game:getQuest(id)
     return self.quests_data[id]
+end
+
+--- Checks if you have a certain DLC installed and returns true if you do. Returns false otherwise
+---@param dlc string -- the DLC ID to check for
+function Game:hasDLC(dlc)
+    local dlcs = Utils.filter(Kristal.Mods.getMods(), function(mod) return not mod.hidden end)
+    for i, v in ipairs(dlcs) do
+        if v.id == dlc then
+            return true
+        end
+    end
+    return false
+end
+
+function Game:isDessMode()
+    if Game:getFlag("Dess_Mode") then
+        return true
+    else
+        return false
+    end
 end
 
 return Game

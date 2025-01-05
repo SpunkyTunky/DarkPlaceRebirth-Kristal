@@ -28,7 +28,7 @@ function item:init()
         ["ralsei"] = 60,
         ["noelle"] = 10,
         ["YOU"] = 60,
-        ["dess"] = 60,
+        ["dess"] = 10,
         ["brenda"] = 60,
 		["jamm"] = 999,
 		["mario"] = 10,
@@ -61,15 +61,10 @@ function item:init()
         noelle = "It's JUST the meat???",
 		dess = "needs more salt lmao",
 		jamm = "I missed this... It's so good!",
+        ["jamm+marcy"] = "Like your mother used to make, right, Marcy?",
 		mario = "Blech! That tastes like shit!"
 	}
-end
-
-function item:getReaction(user_id, reactor_id)
-    if user_id == "jamm" and reactor_id == user_id and Game:getFlag("marcy_joined") then
-		return "Like your mother used to make, right, Marcy?"
-	end
-	return super.getReaction(self, user_id, reactor_id)
+	
 end
 
 -- Function overrides go here
@@ -78,7 +73,7 @@ function item:onBattleUse(user, target)
 	if target.chara.id == "jamm" then
 		target:heal(999, {1, 0, 1})
 		target:addShield(45)
-	elseif target.chara.id == "noelle" then
+	elseif target.chara.id == "noelle" or target.chara.id == "dess" then -- the non-meat eaters
 		target:heal(10, {1, 0, 1})
 	else
 		target:heal(60, {1, 0, 1})

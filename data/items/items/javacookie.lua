@@ -56,16 +56,11 @@ function item:init()
         susie = "It says GUTS!",
         ralsei = "It says Fluffy...",
         noelle = "I... I can't read these symbols...",
+		dess = "thank god its not a javascript cookie",
         jamm = "Better than Bedrock.",
+        ["jamm+marcy"] = "You prefer Bedrock, Marcy?",
 		noel = "uh... are ya sure?",
     }
-end
-
-function item:getReaction(user_id, reactor_id)
-    if user_id == "jamm" and reactor_id == user_id and Game:getFlag("marcy_joined") then
-		return "You prefer Bedrock, Marcy?"
-	end
-	return super.getReaction(self, user_id, reactor_id)
 end
 
 return item

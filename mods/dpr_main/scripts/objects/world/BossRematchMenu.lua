@@ -1,8 +1,10 @@
+---@class BossRematchMenu : Object
 local BossRematchMenu, super = Class(Object)
 
-function BossRematchMenu:init()
+function BossRematchMenu:init(options)
     super.init(self, SCREEN_WIDTH / 2 - 480 / 2, SCREEN_HEIGHT / 2 - 320 / 2, 480, 320)
 
+    self.options = options or {}
     self.parallax_x = 0
     self.parallax_y = 0
 
@@ -24,7 +26,7 @@ function BossRematchMenu:init()
     self.up_sprite = Assets.getTexture("ui/page_arrow_up")
     self.down_sprite = Assets.getTexture("ui/page_arrow_down")
     self.soul = Assets.getTexture("player/heart")
-    self.gradient = Assets.getTexture("ui/char_gradient")
+    self.gradient = Assets.getTexture("ui/char_gradient") or self.soul
 
     self.currently_selected = 1
     self.page = 1
@@ -32,37 +34,48 @@ function BossRematchMenu:init()
     self.item_color_unk = {0.5, 0.5, 0.5}
     self.item_color = {1, 1, 1}
 
+    local encs = {}
+    for mod_id, mod in pairs(Kristal.Mods.data) do
+        if mod.dlc and mod.dlc.bosses then
+            for boss_id, boss in pairs(mod.dlc.bosses) do
+                local t = Utils.copy(boss)
+                t.mod = t.mod or mod_id
+                table.insert(encs, t)
+            end
+        end
+    end
     -- preview is a table. First index is a sprite path, second is the X offset, third is the Y offset.
     -- Each page has room for 8 entries. Any more than that, and you'll either have text overlapping or text going off the UI box.
-    self.encounters = {
-        -- Page 1
-        {
-            { name = "Spamgolor",            flag = "spamgolor_defeated",    encounter = "spamgolor",             grad_color = {20/255, 60/255, 194/255}, preview = {"world/npcs/spamgolor/idle", 70, 50}},
-            { name = "Mimic",                flag = "mimic_defeated",        encounter = "mimicboss",             grad_color = {24/255, 94/255, 231/255},  preview = {"battle/enemies/ufoofdoom/idle_1", 70, 0}},
-            { name = "Starwalker",           flag = "starwalker_defeated",   encounter = "starwalker",            grad_color = {134/255, 148/255, 183/255}, preview = {"battle/enemies/starwalker2/starwalker", 60, 50}},
-            { name = "Sam",                  flag = "sam_defeated",          encounter = "sam",                   grad_color = {0, 0, 1},                  preview = {"world/npcs/sam/idle", 60, 50}},
-            { name = "Zero",                 flag = "zero_defeated",         encounter = "zero",                  grad_color = {136/255, 48/255, 80/255}, preview = {"battle/enemies/zero/idle_0", 70, 50}},
-            { name = "Omega Spamton",        flag = "omegaspamton_defeated", encounter = "omegaspamtonbossfight", grad_color = {93/255, 73/255, 139/255}, preview = {"battle/enemies/omegaspamton/preview", -19, 0}},
-            { name = "Google Dino",          flag = "googledino_defeated",   encounter = "googledino",            grad_color = {0.5, 0.5, 0.5},           preview = {"world/npcs/googledino/static", 60, 50}},
-            { name = "Shade Ania",           flag = "jamm_closure",          encounter = "ania_boss",             grad_color = {92/255, 88/255, 188/255}, preview = {"battle/enemies/shade_ania/idle", 75, 50}},
-        },
-        -- Page 2
-        {
-            { name = "Booty the Bootleg",    flag = "booty_finished",        encounter = "big_booty",             grad_color = {20/255, 60/255, 194/255}, preview = {"battle/enemies/booty/idle", 75, 50}},
-        },
+    self.encounters = {}
+    for i, value in ipairs(encs) do
+        local page = math.floor(i/8) + 1
+        if self.encounters[page] == nil then self.encounters[page] = {} end
+        table.insert(self.encounters[page], value)
+        value.flag = value.flag or ("encounter#"..value.mod.."/"..value.encounter..":done")
+        if value.preview then
+            local path = value.preview
+            if type(path) == "table" then path = path[1] end
+            local image = love.graphics.newImage(Kristal.Mods.data[value.mod].path.."/"..path)
+            value.preview = {image, value.preview[2] or 0, value.preview[3] or 0}
+        end
+    end
 
-    }
-	
 	self.bosses = {}
-	
+    
     for i, _ in ipairs(self.encounters) do
 	    for n, v in ipairs(self.encounters[i]) do
-		    if Game:getFlag(v.flag) then
-			    table.insert(self.bosses, v)
+		    if self:isUnlocked(v) then
+			    table.insert(self.bosses, v.encounter)
 		    end
 	    end
     end
 
+end
+
+---@return boolean
+function BossRematchMenu:isUnlocked(boss)
+    if self.options.all_unlocked then return true end
+    return Game:getFlag(boss.flag)
 end
 
 function BossRematchMenu:draw()
@@ -74,13 +87,13 @@ function BossRematchMenu:draw()
 
     local entry = self.encounters[self.page][self.currently_selected]
 	
-    if Game:getFlag(entry.flag) then
+    if self:isUnlocked(entry) and entry.grad_color then
 	    love.graphics.setColor(entry.grad_color)
     end
 
     love.graphics.draw(self.gradient, 260, 50)
 
-    if Game:getFlag(entry.flag) then
+    if self:isUnlocked(entry) then
 	    love.graphics.setColor(1, 1, 1)
     else
         love.graphics.setColor(0, 0, 0)
@@ -91,9 +104,12 @@ function BossRematchMenu:draw()
 	love.graphics.setLineWidth(2)
     love.graphics.rectangle("line", 260, 50, 200, 140)
 
-    if Game:getFlag(entry.flag) and entry.preview then
+    if self:isUnlocked(entry) and entry.preview then
         local preview = entry.preview
-        love.graphics.draw(Assets.getTexture(preview[1]), 260 + preview[2], 50 + preview[3], 0, (entry.name == "Omega Spamton" and 1 or 2))
+        local canvas = Draw.pushCanvas(200, 140)
+        love.graphics.draw(preview[1], preview[2], preview[3], 0, (entry.name == "Omega Spamton" and 1 or 2))
+        Draw.popCanvas()
+        Draw.draw(canvas, 260, 50)
     end
 
     local y_off = 16
@@ -106,7 +122,7 @@ function BossRematchMenu:draw()
     local line_x = 24
     local line_y = y_off + self.line_height * 1
     for _, encounter in ipairs(self.encounters[self.page]) do
-        if Game:getFlag(encounter.flag) then
+        if self:isUnlocked(encounter) then
             love.graphics.setColor(unpack(self.item_color))
             love.graphics.print(encounter.name, line_x, line_y)
         else
@@ -170,11 +186,12 @@ function BossRematchMenu:onKeyPressed(key, is_repeat)
     end
     if Input.pressed("confirm") then
         local entry = self.encounters[self.page][self.currently_selected]
-        if Game:getFlag(entry.flag) then
+        if self:isUnlocked(entry) then
             self.ui_select:stop()
             self.ui_select:play()
             Game.world:closeMenu()
-            Game:encounter(entry.encounter)
+            Game.bossrush_encounters = {entry.encounter}
+            Game:swapIntoMod(Game:getBossRef(Game.bossrush_encounters[1]).mod)
         else
             self.ui_cant_select:stop()
             self.ui_cant_select:play()
@@ -184,15 +201,8 @@ function BossRematchMenu:onKeyPressed(key, is_repeat)
         self.ui_select:stop()
         self.ui_select:play()
         Game.world:closeMenu()
-        Game.world:startCutscene(function(cutscene)
-            for i, v in ipairs(self.bosses) do
-                -- cutscene:text("* "..#self.bosses-(i-1).." left to go.[wait:10]\n* Up next:[wait:5] "..v[1]..".")
-				cutscene:text("* "..#self.bosses-(i-1).." left to go.[wait:10]\n* Up next:[wait:5]"..v.name..".")
-                cutscene:startEncounter(v.encounter, true)
-				while Game.battle do end
-            end
-            cutscene:text("* Congratulations![wait:10] You win absolutely nothing!")
-        end)
+        Game.bossrush_encounters = Utils.copy(self.bosses)
+        Game:swapIntoMod(Game:getBossRef(Game.bossrush_encounters[1]).mod)
     end
 end
 
