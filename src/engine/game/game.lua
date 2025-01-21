@@ -1553,6 +1553,17 @@ function Game:getUnlockedPartyMembers()
     return Game:getFlag("_unlockedPartyMembers")
 end
 
+--- Checks if you have a party member unlocked and returns true if you do. Returns false otherwise
+---@param member string -- the party member ID to check for
+function Game:hasUnlockedPartyMember(member)
+    for i, v in ipairs(Game:getUnlockedPartyMembers()) do
+        if v == member then
+            return true
+        end
+    end
+    return false
+end
+
 function Game:getQuest(id)
     return self.quests_data[id]
 end
@@ -1575,6 +1586,22 @@ function Game:isDessMode()
     else
         return false
     end
+end
+
+--- Debug function -
+--- Unlocks every party member (Except for Noel since their unlock mechanics are weird)
+function Game:unlockAllPartyMembers()
+    local unlock = {"berdly", "brenda", "ceroba", "ddelta", "dess", "hero", "jamm", "kris", "mario", "nelle", "noelle", "ostarwalker", "pauling", "ralsei", "susie"}
+    for i, v in ipairs(unlock) do
+        Game:unlockPartyMember(v)
+    end
+end
+
+---@param name string
+function Game:isSpecialMode(name)
+    if Game.save_name:upper() == "EVERYCHALLEN" and name ~= "DESS" then return true end
+    if Game.save_name:upper() == "NIGHTMAREWAD" then return true end
+    return Game.save_name:upper() == name:upper()
 end
 
 return Game
