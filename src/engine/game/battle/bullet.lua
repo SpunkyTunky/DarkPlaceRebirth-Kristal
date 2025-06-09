@@ -88,7 +88,7 @@ function Bullet:getMHPDamage()
 end
 
 --- *(Override)* Called when the bullet hits the player's soul without invulnerability frames. \
---- Not calling `super:onDamage()` here will stop the normal damage logic from occurring.
+--- Not calling `super.onDamage()` here will stop the normal damage logic from occurring.
 ---@param soul Soul
 ---@return table<PartyBattler> battlers_hit
 function Bullet:onDamage(soul)
@@ -131,6 +131,13 @@ end
 
 function Bullet:breakSoulShield()
 	Assets.playSound("mirrorbreak")
+    local souleffect = Sprite("player/heart_dodge")
+    souleffect:setOrigin(0.5, 0.5)
+    souleffect.layer = Game.battle.soul.layer + 1
+    souleffect:setParent(Game.battle.soul)
+    souleffect.graphics.grow = 0.1
+    souleffect.alpha = 0.5
+    souleffect:fadeOutAndRemove(0.5)
     local shard_x_table = {-2, 0, 2, 8, 10, 12}
     local shard_y_table = {0, 3, 6}
     Game.battle.soul.shards = {}
@@ -207,7 +214,8 @@ function Bullet:update()
 
     if self.remove_offscreen then
         local size = self.width + self.height
-        if self.x < -size or self.y < -size or self.x > SCREEN_WIDTH + size or self.y > SCREEN_HEIGHT + size then
+        local x, y = self:getScreenPos()
+        if x < -size or y < -size or x > SCREEN_WIDTH + size or y > SCREEN_HEIGHT + size then
             self:remove()
         end
     end

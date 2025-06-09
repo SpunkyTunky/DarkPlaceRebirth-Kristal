@@ -4,7 +4,7 @@
   <export target="dessstart.lua" format="lua"/>
  </editorsettings>
  <properties>
-  <property name="border" value="omori/whitespace'"/>
+  <property name="border" value="white"/>
   <property name="music" value="gimmieyourwalletmiss"/>
   <property name="name" value="Dess - THE BEGINNING"/>
  </properties>
@@ -85,7 +85,7 @@
   <object id="19" name="npc" x="680" y="810" width="40" height="20">
    <properties>
     <property name="actor" value="dess"/>
-    <property name="cond" value="not Game:isDessMode()"/>
+    <property name="cond" value="not Game:getFlag(&quot;gotDess&quot;, false) and not Game:isDessMode()"/>
     <property name="cutscene" value="desslmao.dessbegin"/>
     <property name="flagcheck" value="!gotDess"/>
    </properties>

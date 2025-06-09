@@ -24,7 +24,9 @@ function character:init()
     -- Determines which character the soul comes from (higher number = higher priority)
     self.soul_priority = -1
     -- The color of this character's soul (optional, defaults to red)
-    self.soul_color = {1, 0, 0}
+    self.soul_color = {1, 1, 1}
+    -- In which direction will this character's soul face (optional, defaults to facing up)
+    self.soul_facing = "down"
 
     -- Whether the party member can act / use spells
     self.has_act = false
@@ -93,6 +95,8 @@ function character:init()
     -- X-Action color (for the color of X-Action menu items) (defaults to the main color)
     self.xact_color = {0.5, 1, 0.5}
 
+    self.icon_color = {181/255, 230/255, 29/255}
+	
     -- Head icon in the equip / power menu
     if ralsei_style == 1 then
         self.menu_icon = "party/ralsei/head_ch1"

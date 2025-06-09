@@ -19,7 +19,7 @@ function StorageBox:init(x, y, properties)
 
     self.cutscene = function(cutscene)
         self.should_open_menu = false
-        local choice = cutscene:textChoicer("* Use the box?\n", {"Yes","    No"}, {wait = true})
+        local choice = cutscene:textChoicer("* Use the box?", {"Yes", "No"})
 
         if choice == 1 then
             if #Game.inventory:getStorage("items") == 0 and #Game.inventory:getStorage(self.inventory) == 0 then
@@ -41,7 +41,7 @@ function StorageBox:onTextEnd()
 
     if self.should_open_menu then
         Game.world:closeMenu()
-        Game.world:openMenu(LightStorageMenu("items", "box_a"))
+        Game.world:openMenu(LightStorageMenu("items", self.inventory))
     end
 end
 

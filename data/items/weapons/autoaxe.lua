@@ -51,7 +51,9 @@ function item:init()
         ralsei = "(Is this a good idea?)",
         noelle = "*zrrt* A-AHH! Scared myself...",
 		dess = "this is a great idea",
-        jamm = "Woah! Shakes a lot..."
+        jamm = "Woah! Shakes a lot...",
+        ceroba = "That is a BAD idea.",
+        noel = "Energy Hog",
     }
 end
 

@@ -52,6 +52,8 @@ function item:init()
         jamm = "This brings back memories.",
         ["jamm+marcy"] = "Marcy wants to go there! // Maybe soon, Marcy.",
         noel = "Is this from a resturant?",
+        ceroba = "Isn't that just a normal coin?",
+        suzy = "Rest In Pepperonis",
     }
 end
 

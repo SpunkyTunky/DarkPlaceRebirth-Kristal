@@ -2,7 +2,7 @@
 local item, super = Class(HealItem, "golden_berry")
 
 function item:init()
-    super:init(self)
+    super.init(self)
 
      -- Display name
     self.name = "GoldenBerry"
@@ -42,6 +42,7 @@ function item:init()
         dess = "ew fruit",
         mario = "Blech! That tastes like shit!",
         brenda = "Is that gold paint?",
+        ceroba = "Not the best kind of berry I had...",
     }
 end
 

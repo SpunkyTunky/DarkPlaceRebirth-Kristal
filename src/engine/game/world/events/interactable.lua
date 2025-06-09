@@ -23,8 +23,9 @@
 ---@overload fun(...) : Interactable
 local Interactable, super = Class(Event)
 
-function Interactable:init(x, y, width, height, properties)
-    super.init(self, x, y, width or TILE_WIDTH, height or TILE_HEIGHT)
+function Interactable:init(x, y, shape, properties)
+    shape = shape or {TILE_WIDTH, TILE_HEIGHT}
+    super.init(self, x, y, shape)
 
     properties = properties or {}
 
@@ -38,6 +39,10 @@ function Interactable:init(x, y, width, height, properties)
     self.set_value = properties["setvalue"]
 
     self.once = properties["once"] or false
+
+    if properties["texture"] then
+        self:setSprite(properties["texture"])
+    end
 
     self.interact_count = 0
 end

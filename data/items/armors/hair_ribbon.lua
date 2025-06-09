@@ -16,7 +16,7 @@ function item:init()
     -- Shop description
     self.shop = ""
     -- Menu description
-    self.description = "Medium sized hair ribbon.\nIncreases tension gained by 20%."
+    self.description = "Big sized beige rope ribbon with a white bell.\nIncreases tension gained by 20%."
 
     -- Default shop price (sell price is halved)
     self.price = 400
@@ -54,7 +54,7 @@ function item:init()
         ralsei = "Do I look good?",
         noelle = "It's pretty...",
 		dess = "yet another ribbion dialogue",
-        ceroba = "Back where it should be.",
+        ceroba = "Back to it's rightful place.",
         noel = "I'll tie it to my umbrella.",
 		jamm = "I don't know how I'd make it work.",
         ["jamm+marcy"] = "It's way too big for you, Marcy!"

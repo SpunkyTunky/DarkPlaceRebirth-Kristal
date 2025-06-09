@@ -33,6 +33,10 @@ function ActionBox:init(x, y, index, battler)
     if battler.chara:getNameSprite() then
         self.name_sprite = Sprite(battler.chara:getNameSprite(), 51 + self.name_offset_x, 14 + self.name_offset_y)
         self.box:addChild(self.name_sprite)
+		
+		if Game:getFlag("SHINY", {})[battler.actor:getShinyID()] and not (Game.world and Game.world.map.dont_load_shiny) then
+			self.name_sprite:addFX(GradientFX(COLORS.white, {235/255, 235/255, 130/255}, 1, math.pi/2))
+		end
     end
 
     self.hp_sprite = Sprite("ui/hp", 109, 22)

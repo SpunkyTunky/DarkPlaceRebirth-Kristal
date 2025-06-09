@@ -17,7 +17,7 @@
 local Savepoint, super = Class(Interactable)
 
 function Savepoint:init(x, y, properties)
-    super.init(self, x, y, nil, nil, properties)
+    super.init(self, x, y, nil, properties)
 
     properties = properties or {}
 
@@ -40,6 +40,15 @@ function Savepoint:init(x, y, properties)
     self:setHitbox(0, math.ceil(height / 4) * 2, width, math.floor(height / 4) * 2)
 
 	self.override_power = properties["override_power"]
+end
+
+function Savepoint:update()
+    super.update(self)
+
+    --For Hirty Dackers
+    if Game.world.player and Game.world.player.actor.noel then
+        self:remove()
+    end
 end
 
 function Savepoint:onInteract(player, dir)

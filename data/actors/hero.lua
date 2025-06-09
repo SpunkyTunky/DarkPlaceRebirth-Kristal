@@ -18,7 +18,7 @@ function actor:init()
     self.soul_offset = {15, 25}
 
     -- Color for this actor used in outline areas (optional, defaults to red)
-    self.color = {0, 1, 1}
+    self.color = {1, 0.5, 0}
 
     -- Path to this actor's sprites (defaults to "")
     self.path = "party/hero/dark"
@@ -139,6 +139,8 @@ function actor:init()
 
         ["wall_slam"] = {-1, 0},
     }
+	
+	self.shiny_id = "hero"
 end
 
 return actor

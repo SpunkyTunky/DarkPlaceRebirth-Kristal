@@ -1,8 +1,58 @@
 local actor, super = Class(Actor, "noel")
 
+function actor:pickRandomDigit()
+    local number = "82352941176471"
+    local index = math.random(1, #number)
+    return number:sub(index, index)
+end
+
+local function h(hex)
+    return {tonumber(string.sub(hex, 2, 3), 16)/255, tonumber(string.sub(hex, 4, 5), 16)/255, tonumber(string.sub(hex, 6, 7), 16)/255, value or 1}
+end
+
 function actor:onSpriteInit(sprite)
     sprite:addFX(OutlineFX())
     sprite:getFX(OutlineFX):setColor(1, 1, 1)
+    --print(sprite.sprite_options[1])
+    self.b_tog = math.random(10)
+
+    if self.b_tog == 9 and Noel:isDess() == false then
+
+        self.next_time = (os.date("%S") + self:pickRandomDigit())
+
+        function self:onWorldDraw(chara)
+            self:blinkDraw(chara)
+        end
+        function self:onBattleDraw(chara)
+            self:blinkDraw(chara)
+        end
+    else
+        function self:onWorldDraw(chara)
+        end
+        function self:onBattleDraw(chara)
+        end
+    end
+
+    if Game:getPartyMember("noel").kills >= 100 then
+    sprite:addFX(PaletteFX({
+        h '#585858',
+        h '#272727',
+    }, {
+        h '#a6504d',
+        h '#6a2020',
+    }))
+    end
+
+    if Noel:isDess() then
+        self.default = "dess_mode/walk"
+        
+        self.menu_anim = "dess_mode/walk/down_1"
+    else
+        self.default = "walk"
+        
+        self.menu_anim = "brella"
+    end
+
 end
 
 --Up and down didnt look nice enough
@@ -33,12 +83,29 @@ function Actor:onWorldDraw(chara)
         chara.scale_y = 2
     end
 end
+-- this was another running thingy
+
+function Actor:onWorldDraw(chara)
+
+    local player = Game.world.player
+
+    if chara.is_follower and player.run_timer > 0 then
+        local sprite = chara.sprite.sprite_options[1]
+        if self.sprite_runs[sprite] then
+            chara.sprite.y = 2
+        else
+            chara.sprite.y = 0
+        end
+    end
+end
 ]]
 
 function actor:init()
     super.init(self)
 
     local save = Noel:loadNoel()
+
+    self.noel = true
 
     self.name = "Noel"
     self.width = 33
@@ -61,7 +128,7 @@ function actor:init()
 
     self.portrait_path = "face/noel"
 
-    self.portrait_offset = {-22, -30}
+    self.portrait_offset = {-22, -24}
 
     self.can_blush = false
 
@@ -124,11 +191,107 @@ function actor:init()
         ["dess_mode/walk/right"] = "walk/right",
     }
 
+
+    self.sprite_runs = {
+        "walk/up_2",
+        "walk/up_4",
+        "walk/down_2",
+        "walk/down_4",
+        "walk/left_2",
+        "walk/left_4",
+        "walk/right_2",
+        "walk/right_4",
+    }
+
+    self.sprite_rects = {
+        brella = {
+            {14, 11, 6, 2},
+            {14, 14, 6, 1}
+        },
+        ["walk/down_1"] = {
+            {13, 10, 7, 3},
+            {13, 14, 7, 1}
+        },
+        ["walk/down_3"] = {
+            {13, 10, 7, 3},
+            {13, 14, 7, 1}
+        },
+        ["walk/down_2"] = {
+            {13, 11, 7, 3},
+            {13, 15, 7, 1}
+        },
+        ["walk/down_4"] = {
+            {13, 11, 7, 3},
+            {13, 15, 7, 1}
+        },
+        ["walk/left_1"] = {
+            {12, 10, 3, 3},
+            {12, 14, 3, 1}
+        },
+        ["walk/left_3"] = {
+            {12, 10, 3, 3},
+            {12, 14, 3, 1}
+        },
+        ["walk/left_2"] = {
+            {12, 12, 3, 3},
+            {12, 15, 3, 1}
+        },
+        ["walk/left_4"] = {
+            {11, 11, 3, 3},
+            {11, 15, 3, 1}
+        },
+        ["walk/right_1"] = {
+            {18, 10, 3, 3},
+            {18, 14, 3, 1}
+        },
+        ["walk/right_3"] = {
+            {18, 10, 3, 3},
+            {18, 14, 3, 1}
+        },
+        ["walk/right_2"] = {
+            {18, 11, 3, 3},
+            {18, 15, 3, 1}
+        },
+        ["walk/right_4"] = {
+            {19, 11, 3, 3},
+            {19, 15, 3, 1}
+        }
+    }
+
 end
 
 function actor:onTextSound(node)
     Assets.playSound("voice/noel/"..string.lower(node.character), 1, 1)
     return true
+end
+
+function actor:blinkDraw(chara)
+    local s = 195/255
+    self.second = os.date("%S") + 0
+
+    if self.next_time <= self.second then
+        self.next_time = self:pickRandomDigit() + os.date("%S")
+        if self.next_time > (59) then
+            self.next_time = (self.next_time - 59)
+        end
+        self.blink = 0
+    end
+    if self.blink then
+        local sprite = chara.sprite.sprite_options[1]
+        Draw.setColor(s, s, s, 1)
+
+        if self.sprite_rects[sprite] then
+            for _, rect in ipairs(self.sprite_rects[sprite]) do
+                love.graphics.rectangle("fill", rect[1], rect[2], rect[3], rect[4])
+            end
+        end
+
+        if self.blink >= 1 then
+            self.blink = nil
+        else
+            self.blink = (self.blink + DTMULT)
+        end
+    end
 end
 
 return actor

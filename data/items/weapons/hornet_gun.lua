@@ -51,8 +51,9 @@ function item:init()
         susie = "What is this, a toy?",
         ralsei = "Seems illegal...",
         noelle = "(Too dangerous...)",
-        brenda = "Shot over a game of cards...",
+        brenda = "Ooo I always wanted a revolver!",
 		jamm = "Why, Hornet...?",
+        ceroba = "We don't have license for that, right?"
     }
 end
 

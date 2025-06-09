@@ -36,6 +36,7 @@ function character:init()
 
     self:addSpell("supersling")
     self:addSpell("darksling")
+    self:addSpell("numbshot")
 
     self.health = 120
 
@@ -90,6 +91,8 @@ function character:init()
 	self.flee_text = {
 		"[voice:jamm][facec:jamm/nervous]Nope! I'm out!"
 	}
+	
+	self.graduate = true
 end
 
 function character:getActor(light)
@@ -171,6 +174,13 @@ function character:getMinimemberID()
         return "marcy"
     end
     return super.getMinimemberID(self)
+end
+
+function character:getGameOverMessage(main)
+    return {
+        "Hey, I believe we\ncan do this.",
+        main:getName()..",[wait:5]\nlet's try again!"
+    }
 end
 
 return character

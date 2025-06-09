@@ -22,7 +22,8 @@ GITHUB_REPOS = {
 	},
 	AcousticJammYT={
 		"dpr_jamm_dlc",
-		"DPR_Dark_Pit"
+		"DPR_Dark_Pit",
+		"dlc_future"
 	},
 	polypoyo={
 		"dlc_test"
@@ -36,5 +37,13 @@ GITHUB_REPOS = {
 	JustAnotherRandomGithubUser={
 		"dpr_spamtown_dlc",
 		"dpr_underground_dlc"
+	},
+	DiamondBor={
+		"dlc_trials"
 	}
 }
+
+-- Disables Kristal's built-in Main menu and \
+-- immediately loads the target mod.
+---@type boolean
+AUTO_MOD_START = false

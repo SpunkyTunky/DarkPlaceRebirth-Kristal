@@ -232,6 +232,46 @@ local hub = {
 	
         local choice = cutscene:choicer({"Fix Item", "Fuse", "Fix Us", "Leave"})
         if choice == 2 then
+
+    local items_list = {
+        {
+            result = "soulmantle",
+            item1 = "flarewings",
+            item2 = "discarded_robe"
+        },
+        {
+            result = "dd_burger",
+            item1 = "darkburger",
+            item2 = "darkburger"
+        },
+        {
+            result = "silver_card",
+            item1 = "amber_card",
+            item2 = "amber_card"
+        },
+        {
+            result = "twinribbon",
+            item1 = "pink_ribbon",
+            item2 = "white_ribbon"
+        },
+        {
+            result = "spikeband",
+            item1 = "glowwrist",
+            item2 = "ironshackle"
+        },
+        {
+            result = "tensionbow",
+            item1 = "bshotbowtie",
+            item2 = "tensionbit"
+        },
+        {
+            result = "gold_card",
+            item1 = "silver_card",
+            item2 = "silver_card",
+        },
+    }
+    Kristal.callEvent("setItemsList", items_list)
+
             cutscene:after(function()
                 Game.world:openMenu(FuseMenu())
             end)	
@@ -280,11 +320,11 @@ local hub = {
                 end
 
                 malius:setAnimation("hit")
-                cutscene:wait(9/15)
                 Assets.playSound("squeaky")
+                cutscene:wait(9/15)
                 malius:setAnimation("hit")
-                cutscene:wait(9/15)
                 Assets.playSound("squeaky")
+                cutscene:wait(9/15)
                 
                 char:resetSprite()
 
@@ -781,7 +821,7 @@ local hub = {
                 cutscene:wait(3)
                 music_cut:stop()
 
-                local elevator = Game.stage.objects[12]
+                local elevator = Game.world:getEvent(65)
                 elevator:open()
                 cutscene:wait(0.01)
                 sans.x = 462
@@ -825,6 +865,341 @@ local hub = {
                 Assets.playSound("dimbox")
                 cutscene:text("* (You can now use the Elevator!)")
             end
+        end
+    end,
+
+    sans_under_attack = function(cutscene, event, chara)
+        if chara.sprite.facing == "up" then
+            local sans = Game.world:getCharacter("sans")
+            if not sans then event:remove() cutscene:endCutscene() return end
+            --TODO: The cutscene if Susie is not in the party
+            if not cutscene:getCharacter("susie") then event:remove() cutscene:endCutscene() return end
+            Game.world.music:fade(0, 1, function() Game.world.music:stop() end)
+            sans.x = 462
+			
+            local metalsonic_plush = Game.world:getEvent(82)
+            local save = Game.world:getEvent(48)
+            metalsonic_plush.visible = false
+            save.visible = false
+
+            local shadowguy1 = Game.world:spawnNPC("shadowguy", sans.x - 143, sans.y + 40)
+            shadowguy1.flip_x = true
+            local shadowguy2 = Game.world:spawnNPC("shadowguy", sans.x + 90, sans.y + 40)
+            shadowguy1.sprite:stop(false)
+            shadowguy2.sprite:stop(false)
+            Game.world:addChild(shadowguy1)
+            Game.world:addChild(shadowguy2)
+
+            cutscene:textTagged("* Listen closely, ya little skelepunk.", nil, shadowguy1, { nametag = "???" })
+
+            cutscene:wait(cutscene:panTo(sans))
+
+            cutscene:setTextboxTop(false)
+            shadowguy2.sprite:stop(false)
+            shadowguy1:play(1/4)
+            cutscene:textTagged("* We only gave ya one job: preventing folks from enterin' that elevator.", nil, shadowguy1, { nametag = "Shadowguy 1" })
+            cutscene:textTagged("* And ya didn't even do it properly??", nil, shadowguy1, { nametag = "Shadowguy 1" })
+            shadowguy1.sprite:stop(false)
+            sans:setFacing("left")
+            cutscene:textTagged("* well it's working now,[wait:5] isn't it?", "look_left", "sans")
+            sans:setFacing("right")
+            shadowguy2:play(1/4)
+            cutscene:textTagged("* Don't play dumb with us,[wait:5] skeleman.", nil, shadowguy2, { nametag = "Shadowguy 2" })
+            cutscene:textTagged("* The BOSS ain't happy with what he heard.[wait:5] So ya gonna come with us right now or else-", nil, shadowguy2, { nametag = "Shadowguy 2" })
+            shadowguy2.sprite:stop(false)
+
+            --TODO: Make the party members walk along the stairways of the map, instead of walking on air.
+            cutscene:detachFollowers()
+            local moved_player = cutscene:walkTo(chara, 400, 260, 2)
+            local move_party = {}
+            local nb_followers = #Game.world.followers
+            for i,follower in ipairs(Game.world.followers) do
+                if i == 1 then
+                    table.insert(move_party, cutscene:walkTo(follower, 520, 260, 2))
+                elseif i == 2 then
+                    if nb_followers == 3 then
+                        table.insert(move_party, cutscene:walkTo(follower, 400, 330, 2))
+                    else
+                        table.insert(move_party, cutscene:walkTo(follower, 300, 330, 2))
+                    end
+                elseif i == 3 then
+                    table.insert(move_party, cutscene:walkTo(follower, 520, 330, 2))
+                end
+            end
+
+            sans:setFacing("down")
+            cutscene:textTagged("* HEY!", "angry", "susie")
+
+            cutscene:wait(function()
+                local moved_followers = true
+
+                for k,func in pairs(move_party) do
+                    if not func() then
+                        moved_followers = false
+                        break
+                    end
+                end
+
+                return moved_player() and moved_followers
+            end)
+
+            cutscene:setTextboxTop(false)
+            shadowguy1:play(1/4)
+            cutscene:text("* What do ya want, kids?", nil, shadowguy1, { nametag = "Shadowguy 1" } )
+            shadowguy1.sprite:stop(false)
+            shadowguy2:play(1/4)
+            cutscene:text("* It's adult talkin' here, so \nget lost.", nil, shadowguy2, { nametag = "Shadowguy 2" } )
+            shadowguy2.sprite:stop(false)
+            cutscene:text("* Threats over an elevator don't sound very \"adult\" to me.", "annoyed", "susie")
+            cutscene:text("* So how about YOU get lost instead?", "teeth_smile", "susie")
+            shadowguy2:play(1/4)
+            cutscene:text("* So ya think y'all are tough 'cause you can show your teeths, girl?", nil, shadowguy2, { nametag = "Shadowguy 2" } )
+            shadowguy2.sprite:stop(false)
+            shadowguy1:play(1/4)
+            cutscene:text("* Fine by us. You walked right into that one anyway!", nil, shadowguy1, { nametag = "Shadowguy 1" } )
+            shadowguy1.sprite:stop(false)
+            cutscene:hideNametag()
+
+
+            cutscene:startEncounter("shadowguy", nil, {shadowguy1, shadowguy2})
+            shadowguy1.visible = true --No idea why it gets hidden
+
+
+            if Game:getFlag("shadowguy_violence", false) then
+                if Game:getFlag("shadowguy_special_end", nil) == "FROZEN" then
+                    local susie = cutscene:getCharacter("susie")
+                    susie:setSprite("shock")
+                    susie:setFacing("down")
+                    susie:shake()
+                    cutscene:wait(1)
+
+                    if cutscene:getCharacter("hero") then
+                        cutscene:textTagged("* ...", "shocked", "hero")
+                    end
+                    cutscene:textTagged("* Uhhhh...", "shock_nervous", "susie")
+                    if cutscene:getCharacter("dess") then
+                        cutscene:textTagged("* ", "wtf", "dess")
+                        cutscene:textTagged("* Holy shit", "wtf", "dess")
+                    end
+                    susie:setSprite("walk")
+                    susie:setFacing("up")
+                    cutscene:textTagged("* wow kids. that's some powerful magic you got there.", "look_left", "sans")
+                    cutscene:textTagged("* you should totally NOT use it on random folks, y'know?", "wink", "sans")
+                    cutscene:textTagged("* I, uh... I guess so, yeah.", "sus_nervous", "susie")
+                    cutscene:textTagged("* ("..Game.world.player.actor.name:upper()..", WHAT THE HELL WAS THAT???)", "teeth", "susie")
+                    cutscene:textTagged("* i think you guys should go before someone else see this.", "neutral", "sans")
+                    cutscene:textTagged("* wouldn't want to get in trouble, right?", "look_left", "sans")
+                    cutscene:textTagged("* You're, uh.. Okay with what just happened?", "sus_nervous", "susie")
+                    cutscene:textTagged("* let's just say that as long as you've learn your lesson and don't do it again..", "eyes_closed", "sans")
+                    cutscene:textTagged("* i'll keep my eyes closed.", "wink", "sans")
+                    cutscene:textTagged("* Okay... Cool... I guess.", "sus_nervous", "susie")
+                    cutscene:textTagged("* Let's go, then.", "nervous", "susie")
+                elseif Game:getFlag("shadowguy_special_end", nil) == "KILLED" then
+                    cutscene:wait(1)
+
+                    cutscene:showNametag("Susie")
+                    cutscene:text("* ...", "sad_frown", "susie")
+                    if cutscene:getCharacter("hero") then
+                        cutscene:textTagged("* ...", "shade", "hero")
+                    end
+                    if cutscene:getCharacter("dess") then
+                        cutscene:textTagged("* ...", "wtf", "dess")
+                    end
+                    cutscene:textTagged("* ...", "look_left", "sans")
+                    cutscene:textTagged("* ("..Game.world.player.actor.name:upper()..", WHAT THE HELL???)", "teeth", "susie")
+                    cutscene:textTagged("* So, uh...", "sus_nervous", "susie")
+                    cutscene:textTagged("* did your parents never tell you that killing was bad?", "wink", "sans")
+                    cutscene:textTagged("* Well...", "shy_down", "susie")
+                    if cutscene:getCharacter("dess") then
+                        cutscene:textTagged("* We did it for the vine.[react:1]", "wink", "dess", {reactions={
+                            {"(BE SERIOUS!!)", "right", "bottommid", "teeth", "susie"}
+                        }})
+                    end
+                    cutscene:textTagged("* eh,[wait:5] don't sweat too much about it.", "look_left", "sans")
+                    cutscene:textTagged("* as long as you've learn not to do it again, it's fine.", "neutral", "sans")
+                    cutscene:textTagged("* Are you... For real?", "nervous", "susie")
+                    cutscene:textTagged("* as real as can be.", "joking", "sans")
+                    cutscene:textTagged("* ...", "nervous_side", "susie")
+                    cutscene:textTagged("* Then I guess we'll just go then.", "smirk", "susie")
+                    cutscene:textTagged("* Go and do some good deeds... Yeah...", "nervous", "susie")
+                    cutscene:textTagged("* alright, later kids.", "wink", "sans")
+                else
+                    shadowguy1:play(1/4)
+                    shadowguy2.sprite:stop(false)
+                    cutscene:textTagged("* W-[wait:2]Wow wow! Come on, kids! We don't have to get to such extremes, ya know..?", nil, shadowguy1, { nametag = "Shadowguy 1" } )
+                    shadowguy2:play(1/4)
+                    shadowguy1.sprite:stop(false)
+                    cutscene:textTagged("* Yeah, let's all have a nice discussion, adults to teens..!", nil, shadowguy2, { nametag = "Shadowguy 2" } )
+                    shadowguy2.sprite:stop(false)
+                    cutscene:textTagged("* Scram.[wait:10] Now.", "bangs_teeth", "susie")
+                    shadowguy1:play(1/4)
+                    shadowguy2:play(1/4)
+                    cutscene:textTagged("* Y-[wait:2]Yes m'am!", nil, shadowguy1, { nametag = "Shadowguys 1 & 2" } )
+
+                    cutscene:slideTo(shadowguy2, sans.x + 110, shadowguy2.y)
+
+                    cutscene:wait(cutscene:slideTo(shadowguy1, sans.x - 163, shadowguy1.y))
+
+                    Game.world.timer:after(0.5, function()
+                        for _, member in ipairs(Game.party) do
+                            cutscene:look(cutscene:getCharacter(member.id), "down")
+                        end
+                    end)
+
+                    cutscene:slideTo(shadowguy2, shadowguy2.x, 355)
+                    cutscene:wait(cutscene:slideTo(shadowguy1, shadowguy1.x, 355))
+				
+                    cutscene:slideTo(shadowguy1, shadowguy1.x - 80, shadowguy1.y)
+                    cutscene:wait(cutscene:slideTo(shadowguy2, shadowguy2.x + 80, shadowguy2.y))
+				
+                    cutscene:slideTo(shadowguy2, shadowguy2.x, 600)
+                    cutscene:wait(cutscene:slideTo(shadowguy1, shadowguy1.x, 600))
+
+                    cutscene:wait(1)
+
+                    cutscene:textTagged("* welp...[wait:5] that was something.", "look_left", "sans")
+                    cutscene:textTagged("* Yeah uh...[wait:5]\n* Maybe we went a bit overboard.", "neutral", "susie")
+                    cutscene:textTagged("* hey,[wait:5] don't beat yourself over it too much.", "neutral", "sans")
+                    cutscene:textTagged("* it's not like they're dead or something.", "wink", "sans")
+                    cutscene:textTagged("* ...Sure...", "suspicious", "susie")
+                    cutscene:textTagged("* But anyway,[wait:2] I think we'll just go.", "nervous", "susie")
+                    cutscene:textTagged("* Cool to talk to you and save your ass,[wait:2] I guess??", "nervous_side", "susie")
+                    cutscene:textTagged("* anytime, kid.", "wink", "sans")
+                end
+            else
+                shadowguy1:play(1/4)
+                cutscene:textTagged("* Hey kids! You're pretty cool actually!", nil, shadowguy1, { nametag = "Shadowguy 1" } )
+                local nb_to_text = {"", " two", " three", " four"}
+                cutscene:textTagged("* The boss would love to hear from folks like you"..nb_to_text[#Game.party].."!", nil, shadowguy1, { nametag = "Shadowguy 1" } )
+                shadowguy2:play(1/4)
+                shadowguy1.sprite:stop(false)
+                cutscene:textTagged("* Whaddya say?[wait:2]\n* You could go on the big screen in no time!", nil, shadowguy2, { nametag = "Shadowguy 2" } )
+                shadowguy2.sprite:stop(false)
+                cutscene:textTagged("* Yeah uh,[wait:5] how about you just get lost like we said before the battle?", "annoyed", "susie")
+                cutscene:textTagged("* And also leave that guy alone.", "neutral_side", "susie")
+                if cutscene:getCharacter("dess") then
+                    cutscene:textTagged("* But Susie imagine all the fame and money that could come with it", "genuine_b", "dess")
+                    cutscene:textTagged("* That's...[wait:5] not something that interest me.", "nervous", "susie")
+                    cutscene:textTagged("* Less for you more for me I guess.", "condescending", "dess")
+                    cutscene:textTagged("* Where could I star in?", "genuine", "dess")
+                    shadowguy1:play(1/4)
+                    cutscene:textTagged("* Hmm... That dumb look on ya face..", shadowguy1, { nametag = "Shadowguy 1" } )
+                    cutscene:textTagged("* What's 9+10?", shadowguy1, { nametag = "Shadowguy 1" } )
+                    shadowguy1.sprite:stop(false)
+                    cutscene:textTagged("* 21 yuh", "wink", "dess")
+                    cutscene:textTagged("* ...", nil, shadowguy1, { nametag = "Shadowguy 1" } )
+                    cutscene:textTagged("* ...", nil, shadowguy2, { nametag = "Shadowguy 2" } )
+                    shadowguy2:play(1/4)
+                    shadowguy1:play(1/4)
+                    cutscene:textTagged("* Perfect for reality shows.", nil, shadowguy1, { nametag = "Shadowguys 1 & 2" } )
+                    shadowguy1.sprite:stop(false)
+                end
+                shadowguy2:play(1/4)
+                cutscene:textTagged("* Okay,[wait:5] here's what we gonna do.", nil, shadowguy2, { nametag = "Shadowguy 2" } )
+                cutscene:textTagged("* We're gonna leave your lil' skelefriend here be...", nil, shadowguy2, { nametag = "Shadowguy 2" } )
+				
+                local leader_surnames = {
+                    hero = "human",
+                    kris = "blue person",
+                    susie = "purple dino",
+                    noelle = "nice deer",
+                    berdly = "twitter bird",
+                    dess = "dumb deer",
+                    brenda = "gunslingin' gal",
+                    dumbie = "dummy",
+                    bor = "ball",
+                    osw = "unoriginal",
+                    jamm = "thunder guy"
+                }
+                cutscene:textTagged("* But you,[wait:5] the "..(leader_surnames[Game.world.player.actor.id] or "leader")..",[wait:5] take our number!", nil, shadowguy2, { nametag = "Shadowguy 2" } )
+
+                local leader = cutscene:getCharacter(Game.world.player.actor.id)
+                local x, y = shadowguy2:getPosition()
+                cutscene:wait(cutscene:slideTo(shadowguy2, leader.x + shadowguy2.width/2, leader.y - 20))
+                Assets.playSound("item")
+                cutscene:text("* (You've got the Shadowguys' number!)")
+                cutscene:text("* ...despite the fact that you can't make calls in the Dark World.)")
+                cutscene:wait(cutscene:slideTo(shadowguy2, x, y))
+                shadowguy1:play(1/4)
+                shadowguy2.sprite:stop(false)
+                cutscene:textTagged("* If you ever feel like becoming superstars, we'll always be one call ahead!", nil, shadowguy1, { nametag = "Shadowguy 1" } )
+                cutscene:textTagged("* Later![wait:5] The showbiz doesn't wait!", nil, shadowguy1, { nametag = "Shadowguy 1" } )
+                shadowguy1.sprite:stop(false)
+                cutscene:hideNametag()
+
+                cutscene:slideTo(shadowguy2, sans.x + 110, shadowguy2.y)
+
+                cutscene:wait(cutscene:slideTo(shadowguy1, sans.x - 163, shadowguy1.y))
+
+                Game.world.timer:after(0.5, function()
+                    for _, member in ipairs(Game.party) do
+                        cutscene:look(cutscene:getCharacter(member.id), "down")
+                    end
+                end)
+
+                cutscene:slideTo(shadowguy2, shadowguy2.x, 355)
+                cutscene:wait(cutscene:slideTo(shadowguy1, shadowguy1.x, 355))
+				
+                cutscene:slideTo(shadowguy1, shadowguy1.x - 80, shadowguy1.y)
+                cutscene:wait(cutscene:slideTo(shadowguy2, shadowguy2.x + 80, shadowguy2.y))
+				
+                cutscene:slideTo(shadowguy2, shadowguy2.x, 600)
+                cutscene:wait(cutscene:slideTo(shadowguy1, shadowguy1.x, 600))
+
+                cutscene:wait(1)
+
+                for _, member in ipairs(Game.party) do
+                    cutscene:look(cutscene:getCharacter(member.id), "up")
+                end
+
+                cutscene:textTagged("* welp.[wait:2]\n* that was something.", "neutral", "sans")
+                cutscene:textTagged("* thanks kids.[wait:5]\n* i own you one.", "wink", "sans")
+                cutscene:textTagged("* Yeah uh...[wait:5]\n* No problem,[wait:2] I guess.", "neutral", "susie")
+                cutscene:textTagged("* and i know exactly what you kids want.", "neutral", "sans")
+                cutscene:textTagged("* ...?", "nervous_side", "susie")
+                cutscene:textTagged("* you're free to use the elevator whenever you like.[wait:5] isn't that cool?", "joking", "sans")
+                cutscene:textTagged("* Didn't we already have access to it?", "sus_nervous", "susie")
+                cutscene:textTagged("* yeah,[wait:2] but now it's official access.", "wink", "sans")
+                cutscene:textTagged("* ...Sure...", "suspicious", "susie")
+                cutscene:textTagged("* But anyway,[wait:2] I think we'll just go.", "nervous", "susie")
+                cutscene:textTagged("* Cool to talk to you and save your ass,[wait:2] I guess??", "nervous_side", "susie")
+                cutscene:textTagged("* anytime, kid.", "wink", "sans")
+            end
+
+            cutscene:getCharacter(Game.world.player.actor.id):setFacing("down")
+            cutscene:wait(cutscene:walkTo(Game.world.player.actor.id, sans.x, Game.world.player.y, 1))
+            cutscene:wait(cutscene:alignFollowers())
+            cutscene:wait(cutscene:attachFollowers())
+            cutscene:attachCameraImmediate()
+            shadowguy1:remove()
+            shadowguy2:remove()
+            -- Don't ask me why, I don't know either
+            shadowguy1.sprite:remove()
+            shadowguy2.sprite:remove()
+
+            cutscene:wait(0.5)
+
+            cutscene:fadeOut(0)
+            Assets.playSound("noise")
+            cutscene:wait(0.5)
+            cutscene:getCharacter("sans"):remove()
+            metalsonic_plush.visible = true
+            save.visible = true
+            Assets.playSound("noise")
+            cutscene:fadeIn(0)
+
+            cutscene:wait(0.5)
+
+            if Game:getFlag("shadowguy_special_end", nil) ~= nil then
+                local sfx = Assets.playSound("ominous")
+                cutscene:wait(function()
+                    return not sfx:isPlaying()
+                end)
+            end
+
+            Game.world.music:play(nil, 1)
+            event:remove()
+            event:setFlag("dont_load", true)
         end
     end,
 
@@ -1160,7 +1535,7 @@ local hub = {
             return
         end
 
-        if Game.money <= item.price then
+        if Game.money < item.price then
             onMoneyNotEnough()
         elseif not Game.inventory:addItem(item.id) then
             onInventoryFull()
@@ -1169,6 +1544,144 @@ local hub = {
             onPurchaseComplete(item.post_purchase)
         end
     end,
+	
+    sansshop = function(cutscene, event) -- note: currently unfinished
+        local sans = cutscene:getCharacter("sans")
+		
+        local function onDeclinedOffer()
+            cutscene:textTagged("* don't you know a \ngood deal when you \nhear one?", "joking", "sans")
+        end
+		 
+        cutscene:textTagged("* heya.", "neutral", "sans")
+        cutscene:textTagged("* i decided to try selling some goods in this marketplace.", "look_left", "sans")
+        cutscene:textTagged("* anything you want?", "neutral", "sans")
+		
+        local choice = cutscene:choicer({ "Food", "Nevermind" })
+		
+        if choice == 1 then
+            cutscene:textTagged("* i'm currently selling some fried snow for 5G...", "joking", "sans")
+            cutscene:textTagged("* and some hot dogs,\n[wait:5] 30G for each one.", "neutral", "sans")
+            cutscene:textTagged("* which one will it be?", "wink", "sans")
+			
+            local choice = cutscene:choicer({ "Hot Dog", "Fried Snow" })
+			
+            if choice == 1 then
+                cutscene:showShop()
+                cutscene:textTagged("* cool.\n[wait:5]* that'll be 30G.", "neutral", "sans")
+                local dog_choice = cutscene:choicer({ "Buy", "No" })
+                if dog_choice == 1 then
+                    if Game.money <= 30 then
+                        cutscene:textTagged("* whoops, you don't have\n enough cash.")
+					else
+                        --not done yet
+
+                        cutscene:playSound("locker")
+                        --Game.inventory:addItem("ut_hotdog")
+                        --Game.money = Game.money - 30
+                        cutscene:textTagged("* thanks, kid.\n[wait:5]* here's your 'dog.", "wink", "sans")
+                    end
+                else
+                end
+                cutscene:hideShop()
+            elseif choice == 2 then
+                cutscene:showShop()
+                cutscene:textTagged("* cool.\n[wait:5]* that'll be 5G.", "neutral", "sans")
+                local snow_choice = cutscene:choicer({ "Buy", "No" })
+                if snow_choice == 1 then
+                    cutscene:textTagged("* did i say 5G?\n[wait:5]* i meant 50G.", "look_left", "sans")
+                    local snow_choice2 = cutscene:choicer({ "Buy", "No" })
+                    if snow_choice2 == 1 then
+                        cutscene:textTagged("* really?\n[wait:5]* how about 5000G?", "joking", "sans")
+                        local snow_choice3 = cutscene:choicer({ "Buy", "No" })
+                        if snow_choice3 == 1 then
+                            cutscene:textTagged("* 50000G.\n[wait:5]* that's my final offer.", "neutral", "sans")
+                            local snow_choice4 = cutscene:choicer({ "Buy", "No" })
+                            if snow_choice4 == 1 then
+                                if Game.money >= 50000 then
+                                    cutscene:textTagged("* wow,[wait:5] that's a lot \nof cash.", "neutral", "sans")
+                                    cutscene:textTagged("* that's why i'm sorry \nto say...", "eyes_closed", "sans")
+                                    cutscene:textTagged("* i can't sell you \nthis fried snow.", "neutral", "sans")
+                                    cutscene:textTagged("* it's got too much \nsentimental value.", "wink", "sans")
+                                else
+                                    cutscene:textTagged("* what? \n[wait:5]* you don't have the \nmoney?", "neutral", "sans")
+                                    cutscene:textTagged("* hey, that's okay.", "eyes_closed", "sans")
+                                    cutscene:textTagged("* i don't have any snow.", "wink", "sans")
+                                end
+                            else
+                                onDeclinedOffer()
+                            end
+                        else
+                            onDeclinedOffer()
+                        end
+                    else
+                        onDeclinedOffer()
+                    end
+                else
+                    cutscene:textTagged("* dang.", "eyes_closed", "sans")
+                    cutscene:textTagged("* i should probably charge way more for it then.", "wink", "sans")
+                end
+                cutscene:hideShop()
+            end
+        else
+            cutscene:textTagged("* i'll be here if you need anything.", "wink", "sans")
+        end
+    end,
+
+    lemonade = function(cutscene, event)
+        local lemonade_stand = cutscene:getCharacter("lemonade_stand")
+		cutscene:setSpeaker(lemonade_stand)
+		
+        local function onPurchase()
+		    cutscene:playSound("locker")
+            cutscene:textTagged("* Here you go!\n* Some of my finest lemonade.")
+            cutscene:textTagged("* Oh,[wait:5] one more thing.")
+            cutscene:textTagged("* If,[wait:5] by any chance,[wait:5] you see a duck wandering around somewhere...")
+            cutscene:textTagged("* Don't let him know I'm here or I'll glue you to a tree.")
+        end
+        local function onDeclined()
+            cutscene:textTagged("* Oh!\n* Alright then.")
+            cutscene:textTagged("* Feel free to come back if you've changed your mind!")
+            cutscene:textTagged("* (You better not ask if I've got any grapes though.)")
+        end
+        local function onMoneyNotEnough()
+            cutscene:textTagged("* Uh oh![wait:5]\n* Looks like you don't have enough money.")
+            cutscene:textTagged("* I'll keep this glass ready for you when you have enough though!")
+        end
+        local function onInventoryFull()
+            cutscene:textTagged("* Hold on there.[wait:5]\n* Your inventory's looking pretty packed right now.")
+            cutscene:textTagged("* Try clearing sone of that stuff out first, before I can give you a glass.")
+        end
+		
+		cutscene:textTagged("* Hey there!\n* I'm selling some lemonade.")
+		cutscene:textTagged("* It's cold,[wait:5] it's fresh,[wait:5] and \nit's all home-made!")
+		cutscene:textTagged("* Can I get you a glass?")
+		cutscene:setSpeaker(nil)
+		cutscene:text("* (Buy Lemonade for 60 D$?)")
+		
+		cutscene:showShop()
+        local choice = cutscene:choicer({ "Buy", "Do Not" })
+		cutscene:hideShop()
+		
+        if choice == 2 then
+            cutscene:setSpeaker(lemonade_stand)
+            onDeclined()
+            return
+        end
+        if Game.money < 60 then
+            cutscene:setSpeaker(lemonade_stand)
+            onMoneyNotEnough()
+            return
+        end
+		if not Game.inventory:addItem("lemonade") then
+		    cutscene:setSpeaker(lemonade_stand)
+            onInventoryFull()
+            return
+		end
+		
+        Game.money = Game.money - 60
+		cutscene:setSpeaker(lemonade_stand)
+        onPurchase()
+	end,
 
     money_hole = function(cutscene, event)
         if Game:getFlag("money_hole") == 1 then
@@ -1475,6 +1988,7 @@ local hub = {
                     party_jingle:remove()
                 end
                 Game:setFlag("ostarwalker_party", true)
+                Game:unlockPartyMember("ostarwalker")
             end
             Game:setFlag("starwalker_defeated", true)
             cutscene:wait(cutscene:attachFollowers())
@@ -1503,6 +2017,68 @@ local hub = {
         else
             cutscene:textTagged("* I tried reading this once but then i remembered i can't read", "neutral", "dess")
             cutscene:textTagged("* Such are the pros of being illiterate", "condescending", "dess")
+        end
+    end,
+
+    diagonal_mario = function(cutscene, event)
+        local susie = cutscene:getCharacter("susie")
+        local diagonal_mario = cutscene:getCharacter("diagonal_mario")
+        cutscene:setTextboxTop(true)
+        cutscene:textTagged("* Cease and desist,[wait:5] you fucking idiot", nil, "diagonal_mario", { nametag = "Diagonal Mario of C.A."})
+        if cutscene:getCharacter("susie") then
+            cutscene:textTagged("* Yeah?[wait:5]\n* Or what?", "annoyed", "susie")
+            cutscene:textTagged("* DMCA", nil, "diagonal_mario", { nametag = "Diagonal Mario of C.A."})
+            if Game.party[2].id == "noel" then
+			    cutscene:showNametag("Noel")
+                cutscene:text("[speed:2]* SURPRISE ATTACK GORDON!!!", "loud", "noel", { auto = true })
+                diagonal_mario:explode()
+            else
+                cutscene:text("* Well,[wait:5] shi--", "shock", "susie", { auto = true })
+                Game:removePartyMember("susie")
+                susie:remove()
+                Game:setFlag("susie_party", false)
+            end
+        elseif Game:isDessMode() then
+            Game.world.music:pause()
+            Assets.playSound("no_fuck_off")
+            cutscene:textTagged("[noskip][voice:nil]* no,[wait:2.5] fuck off[wait:7.5]", "dess.exe", "dess", {auto = true})
+
+            local beam_of_death = Rectangle(diagonal_mario.x, 0, 1, diagonal_mario.y)
+            beam_of_death = Rectangle(diagonal_mario.x, 0, 1, diagonal_mario.y)
+            beam_of_death.layer = diagonal_mario.layer - 0.1
+            beam_of_death:setColor(1, 1, 1, 1)
+            beam_of_death:setOrigin(0.5, 0)
+			Game.world:addChild(beam_of_death)
+            Game.world.timer:tween(0.1, beam_of_death, { scale_x = 60})
+			
+            Game.world.timer:tween(0.25, diagonal_mario, { color = {0, 0, 0} })
+			
+            diagonal_mario:setScaleOrigin(0.5, 1)
+            Game.world.timer:tween(1, diagonal_mario, { scale_x = 4, scale_y = 0 })
+			
+            cutscene:wait(2)
+            Game.world.timer:tween(0.1, beam_of_death, { scale_x = 0})
+            cutscene:wait(0.1)
+            diagonal_mario:remove()
+            beam_of_death:remove()
+			
+            cutscene:wait(2)
+            cutscene:textTagged("* no copyright law in the universe can stop me", "condescending", "dess")
+            Game:setFlag("diagonalMarioKilled", true)
+
+            Game.world.music:resume()
+        end
+    end,
+
+    poem_plate = function(cutscene, event)
+        if event:getFlag("poem_plate") then
+        else
+            Game.inventory:addItem("poem_plate")
+            cutscene:text("* (There appears to be something behind this banner...)")
+            Assets.playSound("item")
+            cutscene:text("* (You obtained the [color:yellow]Poem Plate[color:white].)")
+            cutscene:text("* (The [color:yellow]Poem Plate[color:white] was added to your [color:yellow]ITEMs[color:white].)")
+            event:setFlag("poem_plate", true)
         end
     end,
 }

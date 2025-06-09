@@ -584,6 +584,9 @@ end
 ---@param no_warning boolean?
 function Registry.registerGlobal(id, value, no_warning)
     if _G[id] then
+        if type(value) == "table"
+            and value.__hookscript_class
+        then return end
         if not no_warning then
             Kristal.Console:warn("Global '"..tostring(id).."' already exists, replacing")
         end
@@ -1081,7 +1084,7 @@ function Registry.iterScripts(base_path, exclude_folder)
     local result = {}
 
     CLASS_NAME_GETTER = function(k)
-        for _,v in ipairs(result) do
+        for _,v in ipairs(Utils.reverse(result)) do
             if v.id == k then
                 return v.out[1]
             end
@@ -1151,6 +1154,10 @@ function Registry.iterScripts(base_path, exclude_folder)
 
     parse(base_path, self.base_scripts)
     if Mod then
+        for _, mod in ipairs(Kristal.Mods.list) do
+            Kristal.Mods.getAndLoadMod(mod.id)
+            parse("sharedscripts/"..base_path, mod.script_chunks)
+        end
         for _,library in Kristal.iterLibraries() do
             parse("scripts/"..base_path, library.info.script_chunks)
         end

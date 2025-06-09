@@ -12,7 +12,7 @@ return {
   nextlayerid = 7,
   nextobjectid = 56,
   properties = {
-    ["border"] = "omori/whitespace'",
+    ["border"] = "white",
     ["music"] = "gimmieyourwalletmiss",
     ["name"] = "Dess - THE BEGINNING"
   },
@@ -331,7 +331,7 @@ return {
           visible = true,
           properties = {
             ["actor"] = "dess",
-            ["cond"] = "not Game:isDessMode()",
+            ["cond"] = "not Game:getFlag(\"gotDess\", false) and not Game:isDessMode()",
             ["cutscene"] = "desslmao.dessbegin",
             ["flagcheck"] = "!gotDess"
           }

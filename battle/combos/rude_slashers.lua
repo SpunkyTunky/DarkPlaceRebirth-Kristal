@@ -9,7 +9,7 @@ function Forest:init()
     -- Battle description
     self.effect = ""
     -- Menu description
-    self.description = "YOU and Susie slash at the enemy many times."
+    self.description = "Hero and Susie slash at the enemy many times."
 
     -- TP cost
     self.cost = 48
@@ -23,13 +23,13 @@ function Forest:init()
     self.tags = {}
 
     -- Other party members that are required to be in the party.
-    self.party = {"YOU","susie"}
+    self.party = {"hero", "susie"}
 end
 
 function Forest:doCutscene(cutscene, enemy)
-	cutscene:text("* YOU and Susie use Rude Slash!")
+	cutscene:text("* Hero and Susie use Rude Slash!")
 	-- Get players active, get initial positions
-	local krisPlayer = cutscene:getCharacter("YOU")
+	local krisPlayer = cutscene:getCharacter("hero")
 	local susiePlayer = cutscene:getCharacter("susie")
 	local kx, ky = krisPlayer.x, krisPlayer.y
 	local sx, sy = susiePlayer.x, susiePlayer.y

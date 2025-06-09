@@ -27,6 +27,9 @@ local lib = MagicalGlassLib
 function lib:unload()
     MagicalGlassLib          = nil
     MG_PALETTE               = nil
+    MG_EVENT                 = nil
+    LIGHT_BATTLE_LAYERS      = nil
+    
     TweenManager             = nil
     LightBattle              = nil
     LightPartyBattler        = nil
@@ -46,8 +49,13 @@ function lib:unload()
     LightAttackBox           = nil
     LightAttackBar           = nil
     LightStatusDisplay       = nil
-    RandomEncounter          = nil
     LightShop                = nil
+    RandomEncounter          = nil
+    
+    Textbox.REACTION_X_BATTLE = ORIG_REACTION_X_BATTLE
+    Textbox.REACTION_Y_BATTLE = ORIG_REACTION_Y_BATTLE
+    ORIG_REACTION_X_BATTLE = nil
+    ORIG_REACTION_Y_BATTLE = nil
 end
 
 function lib:save(data)
@@ -56,13 +64,12 @@ function lib:save(data)
     data.magical_glass["serious_mode"] = lib.serious_mode
     data.magical_glass["spare_color"] = lib.spare_color
     data.magical_glass["spare_color_name"] = lib.spare_color_name
-    data.magical_glass["lw_save_lv"] = Game.party[1] and Game.party[1]:getLightLV() or 0
+    data.magical_glass["save_level"] = Game.party[1] and Game.party[1]:getLightLV() or 0
     data.magical_glass["in_light_shop"] = lib.in_light_shop
     data.magical_glass["current_battle_system"] = lib.current_battle_system
     data.magical_glass["random_encounter"] = lib.random_encounter
     data.magical_glass["light_battle_shake_text"] = lib.light_battle_shake_text
     data.magical_glass["rearrange_cell_calls"] = lib.rearrange_cell_calls
-    data.magical_glass["lightmenu_calls"] = Game.world.calls
 end
 
 function lib:load(data, new_file)
@@ -72,36 +79,26 @@ function lib:load(data, new_file)
     
     Game.light = Kristal.getLibConfig("magical-glass", "default_battle_system")[2] or false
     
+    data.magical_glass = data.magical_glass or {}
+    lib.kills = data.magical_glass["kills"] or 0
+    lib.serious_mode = data.magical_glass["serious_mode"] or false
+    lib.spare_color = data.magical_glass["spare_color"] or COLORS.yellow
+    lib.spare_color_name = data.magical_glass["spare_color_name"] or "YELLOW"
+    lib.in_light_shop = data.magical_glass["in_light_shop"] or false
+    lib.current_battle_system = data.magical_glass["current_battle_system"] or nil
+    lib.random_encounter = data.magical_glass["random_encounter"] or nil
+    lib.light_battle_shake_text = data.magical_glass["light_battle_shake_text"] or 0
+    lib.rearrange_cell_calls = data.magical_glass["rearrange_cell_calls"] or false
+    
     if new_file then
-        lib.kills = 0
-        lib.serious_mode = false
-        lib.spare_color = COLORS.yellow
-        lib.spare_color_name = "YELLOW"
-        lib.lw_save_lv = 0
-        lib.in_light_shop = false
         self:setGameOvers(0)
-        lib.light_battle_shake_text = 0
-        lib.rearrange_cell_calls = false
         
         lib.initialize_armor_conversion = true
-    else
-        data.magical_glass = data.magical_glass or {}
-        lib.kills = data.magical_glass["kills"] or 0
-        self:setGameOvers(self:getGameOvers() or 0)
-        lib.serious_mode = data.magical_glass["serious_mode"] or false
-        lib.spare_color = data.magical_glass["spare_color"] or COLORS.yellow
-        lib.spare_color_name = data.magical_glass["spare_color_name"] or "YELLOW"
-        lib.lw_save_lv = data.magical_glass["lw_save_lv"] or 0
-        lib.in_light_shop = data.magical_glass["in_light_shop"] or false
-        lib.current_battle_system = data.magical_glass["current_battle_system"] or nil
-        lib.random_encounter = data.magical_glass["random_encounter"] or lib.random_encounter or nil
-        lib.light_battle_shake_text = data.magical_glass["light_battle_shake_text"] or 0
-        lib.rearrange_cell_calls = data.magical_glass["rearrange_cell_calls"] or false
-        if lib.rearrange_cell_calls and data.magical_glass["lightmenu_calls"] then
-            Game.world.timer:after(1/30, function()
-                Game.world.calls = data.magical_glass["lightmenu_calls"]
-            end)
+        if not Kristal.getLibConfig("magical-glass", "item_conversion") then
+            Game:setFlag("has_cell_phone", Kristal.getModOption("cell") ~= false)
         end
+    else
+        self:setGameOvers(self:getGameOvers() or 0)
         
         for _,party in pairs(Game.party_data) do -- Fixes a crash with existing saves
             if not party.lw_stats["magic"] then
@@ -178,6 +175,9 @@ function lib:clearGlobalSave()
 end
 
 function lib:preInit()
+    ORIG_REACTION_X_BATTLE = Textbox.REACTION_X_BATTLE
+    ORIG_REACTION_Y_BATTLE = Textbox.REACTION_Y_BATTLE
+    
     MG_PALETTE = {
         ["tension_maxtext"] = PALETTE["tension_maxtext"],
         ["tension_back"] = PALETTE["tension_back"],
@@ -185,11 +185,18 @@ function lib:preInit()
         ["tension_fill"] = PALETTE["tension_fill"],
         ["tension_max"] = PALETTE["tension_max"],
         
+        ["tension_desc"] = PALETTE["tension_desc"],
+        
         ["action_health_bg"] = COLORS.red,
         ["action_health"] = COLORS.lime,
         ["action_health_text"] = PALETTE["action_health_text"],
         ["battle_mercy_bg"] = PALETTE["battle_mercy_bg"],
         ["battle_mercy_text"] = PALETTE["battle_mercy_text"],
+        
+        ["gauge_outline"] = COLORS.black,
+        ["gauge_bg"] = {64/255, 64/255, 64/255, 1},
+        ["gauge_health"] = COLORS.lime,
+        ["gauge_mercy"] = COLORS.yellow,
         
         ["pink_spare"] = {255/255, 187/255, 212/255, 1},
         
@@ -201,49 +208,104 @@ function lib:preInit()
         ["player_health_bg_dark"] = PALETTE["action_health_bg"],
         ["player_karma_health_dark"] = COLORS.silver,
         
+        ["player_text"] = COLORS.white,
         ["player_defending_text"] = COLORS.aqua,
         ["player_action_text"] = COLORS.yellow,
         ["player_down_text"] = COLORS.red,
         ["player_sleeping_text"] = COLORS.blue,
         ["player_karma_text"] = COLORS.fuchsia,
+        
+        ["light_world_dark_battle_color"] = COLORS.white,
+        ["light_world_dark_battle_color_attackbar"] = COLORS.lime,
+        ["light_world_dark_battle_color_attackbox"] = {0.5, 0, 0, 1},
+        ["light_world_dark_battle_color_damage_single"] = COLORS.white,
     }
     
-    self.random_encounters = {}
-    self.light_encounters = {}
-    self.light_enemies = {}
-    self.light_waves = {}
-    self.light_shops = {}
+    MG_EVENT = {
+        onLightBattleActionBegin = "onLightBattleActionBegin",
+        onLightBattleActionEnd = "onLightBattleActionEnd",
+        onLightBattleActionCommit = "onLightBattleActionCommit",
+        onLightBattleActionUndo = "onLightBattleActionUndo",
+        onLightBattleMenuSelect = "onLightBattleMenuSelect",
+        onLightBattleMenuCancel = "onLightBattleMenuCancel",
+        onLightBattleEnemySelect = "onLightBattleEnemySelect",
+        onLightBattleEnemyCancel = "onLightBattleEnemyCancel",
+        onLightBattlePartySelect = "onLightBattlePartySelect",
+        onLightBattlePartyCancel = "onLightBattlePartyCancel",
+        onLightActionSelect = "onLightActionSelect",
+        
+        onRegisterRandomEncounters = "onRegisterRandomEncounters",
+        onRegisterLightEncounters = "onRegisterLightEncounters",
+        onRegisterLightEnemies = "onRegisterLightEnemies",
+        onRegisterLightWaves = "onRegisterLightWaves",
+        onRegisterLightShops = "onRegisterLightShops",
+    }
+    
+    LIGHT_BATTLE_LAYERS = {
+        ["bottom"]             = -1000,
+        ["below_battlers"]     = -900,
+        ["battlers"]           = -850,
+        ["above_battlers"]     = -800, --┰-- -800
+        ["below_ui"]           = -800, --┙
+        ["ui"]                 = -700,
+        ["above_ui"]           = -600, --┰-- -600
+        ["below_arena"]        = -600, --┙
+        ["arena"]              = -500,
+        ["above_arena"]        = -400, --┰-- -400
+        ["below_bullets"]      = -400, --┙
+        ["bullets"]            = -300,
+        ["above_bullets"]      = -200, --┰-- -200
+        ["below_soul"]         = -200, --┙
+        ["soul"]               = -150,
+        ["above_soul"]         = -100, --┰-- -100
+        ["below_arena_border"] = -100, --┙
+        ["arena_border"]       = -50,
+        ["above_arena_border"] = 0,
+        ["damage_numbers"]     = 150,
+        ["top"]                = 1000
+    }
+end
 
+function lib:onRegistered()
+    self.random_encounters = {}
     for _,path,rnd_enc in Registry.iterScripts("battle/randomencounters") do
         assert(rnd_enc ~= nil, '"randomencounters/'..path..'.lua" does not return value')
         rnd_enc.id = rnd_enc.id or path
         self.random_encounters[rnd_enc.id] = rnd_enc
     end
+    Kristal.callEvent(MG_EVENT.onRegisterRandomEncounters)
 
+    self.light_encounters = {}
     for _,path,light_enc in Registry.iterScripts("battle/lightencounters") do
         assert(light_enc ~= nil, '"lightencounters/'..path..'.lua" does not return value')
         light_enc.id = light_enc.id or path
         self.light_encounters[light_enc.id] = light_enc
     end
+    Kristal.callEvent(MG_EVENT.onRegisterLightEncounters)
 
+    self.light_enemies = {}
     for _,path,light_enemy in Registry.iterScripts("battle/lightenemies") do
         assert(light_enemy ~= nil, '"lightenemies/'..path..'.lua" does not return value')
         light_enemy.id = light_enemy.id or path
         self.light_enemies[light_enemy.id] = light_enemy
     end
+    Kristal.callEvent(MG_EVENT.onRegisterLightEnemies)
     
+    self.light_waves = {}
     for _,path,light_wave in Registry.iterScripts("battle/lightwaves") do
         assert(light_wave ~= nil, '"lightwaves/'..path..'.lua" does not return value')
         light_wave.id = light_wave.id or path
         self.light_waves[light_wave.id] = light_wave
     end
+    Kristal.callEvent(MG_EVENT.onRegisterLightWaves)
 
+    self.light_shops = {}
     for _,path,light_shop in Registry.iterScripts("lightshops") do
         assert(light_shop ~= nil, '"lightshops/'..path..'.lua" does not return value')
         light_shop.id = light_shop.id or path
         self.light_shops[light_shop.id] = light_shop
     end
-    
+    Kristal.callEvent(MG_EVENT.onRegisterLightShops)
 end
 
 function lib:init()
@@ -282,7 +344,6 @@ function lib:init()
         if Game.battle and Game.battle.light then
             local old_choice = self.current_choice
             if Input.pressed("left") or Input.pressed("right") then
-                Game.battle:playMoveSound()
                 if self.current_choice == 1 then
                     self.current_choice = 2
                 else
@@ -292,6 +353,11 @@ function lib:init()
 
             if self.current_choice > #self.choices then
                 self.current_choice = old_choice
+            end
+            
+            if self.ui_sound ~= false and self.current_choice ~= old_choice then
+                Game.battle.ui_move:stop()
+                Game.battle.ui_move:play()
             end
 
             if Input.pressed("confirm") then
@@ -331,11 +397,11 @@ function lib:init()
             Object.draw(self)
             love.graphics.setFont(self.font)
             if self.choices[1] then
-                Game.battle.battle_ui.choice_option[1]:setPosition(48, 30 - (select(2, string.gsub(self.choices[1], "\n", "")) >= 2 and love.graphics.getFont():getHeight() or 0))
+                Game.battle.battle_ui.choice_option[1]:setPosition(48, 30 - (select(2, string.gsub(self.choices[1], "\n", "")) >= 2 and self.font:getHeight() or 0))
                 Game.battle.battle_ui.choice_option[1]:setText("[shake:"..MagicalGlassLib.light_battle_shake_text.."]" .. self.choices[1])
             end
             if self.choices[2] then
-                Game.battle.battle_ui.choice_option[2]:setPosition(304, 30 - (select(2, string.gsub(self.choices[2], "\n", "")) >= 2 and love.graphics.getFont():getHeight() or 0))
+                Game.battle.battle_ui.choice_option[2]:setPosition(304, 30 - (select(2, string.gsub(self.choices[2], "\n", "")) >= 2 and self.font:getHeight() or 0))
                 Game.battle.battle_ui.choice_option[2]:setText("[shake:"..MagicalGlassLib.light_battle_shake_text.."]" .. self.choices[2])
             end
 
@@ -380,12 +446,6 @@ function lib:init()
         end
     end)
     
-    Utils.hook(World, "transitionMusic", function(orig, self, next, fade_out)
-        if self.music.current ~= "toomuch" then
-            orig(self, next, fade_out)
-        end
-    end)
-    
     Utils.hook(World, "mapTransition", function(orig, self, ...)
         orig(self, ...)
         lib.map_transitioning = true
@@ -412,12 +472,41 @@ function lib:init()
         lib.viewing_image = false
     end)
     
+    Utils.hook(World, "showHealthBars", function(orig, self)
+        if Game:isLight() then
+            if self.healthbar then
+                self.healthbar:transitionIn()
+            else
+                self.healthbar = LightHealthBar()
+                self.healthbar.layer = WORLD_LAYERS["ui"] + 1
+                self:addChild(self.healthbar)
+            end
+        else
+            orig(self)
+        end
+    end)
+    
     Utils.hook(Game, "enterShop", function(orig, self, shop, options, light)
         if lib.in_light_shop or light then
             MagicalGlassLib:enterLightShop(shop, options)
         else
             orig(self, shop, options)
         end
+    end)
+    
+    Utils.hook(Game, "setupShop", function(orig, self, shop)
+        local check_shop
+        if type(shop) == "string" then
+            check_shop = Registry.getShop(shop)
+        else
+            check_shop = shop
+        end
+        
+        if check_shop:includes(LightShop) then
+            error("Attempted to use LightShop in a Shop. Convert the shop file to a Shop")
+        end
+        
+        orig(self, shop)
     end)
 
     Utils.hook(World, "lightShopTransition", function(orig, self, shop, options)
@@ -426,10 +515,106 @@ function lib:init()
         end)
     end)
     
+    Utils.hook(Transition, "init", function(orig, self, x, y, w, h, properties)
+        orig(self, x, y, w, h, properties)
+        
+        properties = properties or {}
+        
+        self.target["lightshop"] = properties.lightshop
+    end)
+    
+    Utils.hook(Transition, "getDebugInfo", function(orig, self)
+        local info = Event.getDebugInfo(self)
+        if self.target.map then table.insert(info, "Map: " .. self.target.map) end
+        if self.target.shop then table.insert(info, "Shop: " .. self.target.shop) end
+        if self.target.lightshop then table.insert(info, "Light Shop: " .. self.target.lightshop) end
+        if self.target.x then table.insert(info, "X: " .. self.target.x) end
+        if self.target.y then table.insert(info, "Y: " .. self.target.y) end
+        if self.target.marker then table.insert(info, "Marker: " .. self.target.marker) end
+        if self.target.facing then table.insert(info, "Facing: " .. self.target.facing) end
+        return info
+    end)
+    
+    Utils.hook(Transition, "onEnter", function(orig, self, chara)
+        if chara.is_player then
+            local x, y = self.target.x, self.target.y
+            local facing = self.target.facing
+            local marker = self.target.marker
+
+            if self.sound then
+                Assets.playSound(self.sound, 1, self.pitch)
+            end
+
+            if self.target.shop and self.target.lightshop then
+                error("Transition cannot have both shop and lightshop")
+            elseif self.target.shop then
+                self.world:shopTransition(self.target.shop, {x=x, y=y, marker=marker, facing=facing, map=self.target.map})
+            elseif self.target.lightshop then
+                self.world:lightShopTransition(self.target.lightshop, {x=x, y=y, marker=marker, facing=facing, map=self.target.map})
+            elseif self.target.map then
+                local callback = function(map)
+                    if self.exit_sound then
+                        Assets.playSound(self.exit_sound, 1, self.exit_pitch)
+                    end
+                    Game.world.door_delay = self.exit_delay
+                end
+
+                if marker then
+                    self.world:mapTransition(self.target.map, marker, facing or chara.facing, callback)
+                else
+                    self.world:mapTransition(self.target.map, x, y, facing or chara.facing, callback)
+                end
+            end
+        end
+    end)
+    
+    Utils.hook(WorldCutscene, "init", function(orig, self, world, group, id, ...)
+        orig(self, world, group, id, ...)
+        
+        if Game:isLight() then
+            if self.world.menu and self.world.menu.state == "STATMENU" then
+                self.world.menu:closeBox()
+                self.world.menu.state = "TEXT"
+            end
+        end
+    end)
+    
+    Utils.hook(WorldCutscene, "showShop", function(orig, self)
+        if Game:isLight() then
+            if self.shopbox then self.shopbox:remove() end
+
+            self.shopbox = LightShopbox()
+            self.shopbox.layer = WORLD_LAYERS["textbox"]
+            self.world:addChild(self.shopbox)
+            self.shopbox:setParallax(0, 0)
+        else
+            orig(self)
+        end
+    end)
+    
     Utils.hook(Battle, "init", function(orig, self)
         orig(self)
         self.light = false
         self.soul_speed_bonus = 0
+    end)
+    
+    Utils.hook(Battle, "postInit", function(orig, self, state, encounter)
+        local check_encounter
+        if type(encounter) == "string" then
+            check_encounter = Registry.getEncounter(encounter)
+        else
+            check_encounter = encounter
+        end
+        
+        if check_encounter:includes(LightEncounter) then
+            error("Attempted to use LightEncounter in a DarkBattle. Convert the encounter file to an Encounter")
+        end
+    
+        orig(self, state, encounter)
+        if not Kristal.getLibConfig("magical-glass", "light_world_dark_battle_tension") and Game:isLight() then
+            self.tension_bar:remove()
+            self.tension_bar = nil
+        end
     end)
     
     Utils.hook(Battle, "onKeyPressed", function(orig, self, key)
@@ -468,8 +653,8 @@ function lib:init()
     Utils.hook(Battle, "nextTurn", function(orig, self)
         self.turn_count = self.turn_count + 1
         if self.turn_count > 1 then
-            for _,party in ipairs(self.party) do
-                if party.chara:onTurnEnd() then
+            for _,battler in ipairs(self.party) do
+                if battler.chara:onTurnEnd(battler) then
                     return
                 end
             end
@@ -508,7 +693,9 @@ function lib:init()
                 box:resetHeadIcon()
             end
 
-            self.money = self.money + (math.floor((Game:getTension() * 2.5) / 30))
+            if Kristal.getLibConfig("magical-glass", "light_world_dark_battle_tension") then
+                self.money = self.money + math.floor(Game:getTension() / 5)
+            end
 
             for _,battler in ipairs(self.party) do
                 for _,equipment in ipairs(battler.chara:getEquipment()) do
@@ -540,7 +727,7 @@ function lib:init()
                 member.chara:addLightEXP(self.xp)
 
                 if lv ~= member.chara:getLightLV() then
-                    win_text = "* You won!\n* Got " .. self.xp .. " EXP and " .. self.money .. " "..Game:getConfig("lightCurrency"):lower()..".\n* Your LOVE increased."
+                    win_text = "* You won!\n* Got " .. self.xp .. " EXP and " .. self.money .. " "..Game:getConfig("lightCurrency"):lower()..".\n* Your "..Kristal.getLibConfig("magical-glass", "light_level_name").." increased."
                     Assets.stopAndPlaySound("levelup")
                 end
             end
@@ -562,20 +749,12 @@ function lib:init()
         end
     end)
     
-    Utils.hook(Soul, "onDamage", function(orig, self)
-        for _,party in ipairs(Game.battle.party) do
-            for _,equip in ipairs(party.chara:getEquipment()) do
-                if equip.applyInvBonus then
-                    self.inv_timer = equip:applyInvBonus(self.inv_timer)
-                end
-            end
-        end
-        orig(self)
-    end)
-    
     Utils.hook(Soul, "init", function(orig, self, x, y, color)
         orig(self, x, y, color)
         self.speed = self.speed + Game.battle.soul_speed_bonus
+        if not Kristal.getLibConfig("magical-glass", "light_world_dark_battle_tension") and Game:isLight() then
+            self.graze_collider.collidable = false
+        end
     end)
 
     Utils.hook(TensionItem, "onBattleSelect", function(orig, self, user, target)
@@ -615,6 +794,7 @@ function lib:init()
     end)
 
     Utils.hook(Actor, "addLightBattlerPart", function(orig, self, id, data)
+        self.use_light_battler_sprite = true
         if type(data) == "string" then
             self.light_battler_parts[id] = {["create_sprite"] = self.path.."/"..data}
         else
@@ -626,8 +806,8 @@ function lib:init()
         return self.light_battler_parts[part]
     end)
 
-    Utils.hook(Actor, "createLightBattleSprite", function(orig, self)
-        return LightEnemySprite(self)
+    Utils.hook(Actor, "createLightBattleSprite", function(orig, self, enemy)
+        return LightEnemySprite(self, enemy)
     end)
 
     Utils.hook(ActorSprite, "init", function(orig, self, actor)
@@ -749,7 +929,7 @@ function lib:init()
 
     Utils.hook(ChaserEnemy, "onCollide", function(orig, self, player)
         if self.encounter and self.light_encounter then
-            error("ChaserEnemy cannot have both encounter and lightencounter.")
+            error("ChaserEnemy cannot have both encounter and lightencounter")
         elseif not self.light_encounter then
             orig(self, player)
         else
@@ -783,21 +963,6 @@ function lib:init()
             end
         end
     end)
-
-    Utils.hook(Battle, "postInit", function(orig, self, state, encounter)
-        local local_encounter
-        if type(encounter) == "string" then
-            local_encounter = Registry.getEncounter(encounter)
-        else
-            local_encounter = encounter
-        end
-        
-        if local_encounter:includes(LightEncounter) then
-            error("Attempted to use LightEncounter in a DarkBattle. Convert the encounter file to an Encounter.")
-        end
-        
-        orig(self, state, encounter)
-    end)
     
     Utils.hook(Battle, "setWaves", function(orig, self, waves, allow_duplicates)
         for i,wave in ipairs(waves) do
@@ -805,7 +970,7 @@ function lib:init()
                 wave = Registry.getWave(wave)
             end
             if wave:includes(LightWave) then
-                error("Attempted to use LightWave in a DarkBattle. Convert '"..waves[i].."' to a Wave.")
+                error("Attempted to use LightWave in a DarkBattle. Convert '"..waves[i].."' to a Wave")
             end
         end
         return orig(self, waves, allow_duplicates)
@@ -817,14 +982,14 @@ function lib:init()
     end)
 
     Utils.hook(Item, "init", function(orig, self)
-    
         orig(self)
+        
         -- Short name for the light battle item menu
         self.short_name = nil
         -- Serious name for the light battle item menu
         self.serious_name = nil
-
-        self.tags = {}
+        -- Dark name for the dark battle item menu
+        self.dark_name = nil
 
         -- How this item is used on you (ate, drank, eat, etc.)
         self.use_method = "used"
@@ -836,11 +1001,55 @@ function lib:init()
         -- Doesn't display stats for weapons and armors in light shops
         self.shop_dont_show_change = false
         
-        -- Prevents the overworld selection for an item (Light World Only)
-        self.skip_overworld_selection = false
-        
         -- Whether this equipment item can convert on light change
         self.equip_can_convert = nil
+        
+        self.equip_display_name = nil
+        
+        self.heal_bonus = 0
+        self.inv_bonus = 0
+        self.flee_bonus = 0
+
+        self.light_bolt_count = 1
+
+        self.light_bolt_speed = 11
+        self.light_bolt_speed_variance = 2
+        
+        self.light_bolt_acceleration = 0
+
+        self.light_bolt_start = -16 -- number or table of where the bolt spawns. if it's a table, a value is chosen randomly
+        self.light_multibolt_variance = nil
+
+        self.light_bolt_direction = nil -- "right", "left", or "random"
+
+        self.light_bolt_miss_threshold = nil -- (Defaults: 280 for slice weapons | 2 for shoe weapons)
+
+        self.attack_sprite = "effects/lightattack/strike"
+
+        -- Sound played when attacking, defaults to laz_c
+        self.attack_sound = "laz_c"
+        
+        self.tags = {}
+
+        self.attack_pitch = 1
+    end)
+    
+    Utils.hook(Item, "getName", function(orig, self)
+        if self.light and Game.state == "BATTLE" and not Game.battle.light and self.dark_name then
+            return self.dark_name
+        else
+            return orig(self)
+        end
+    end)
+    
+    Utils.hook(Item, "getUseName", function(orig, self)
+        if self.light and Game.state == "BATTLE" and not Game.battle.light and self:getName() == self.dark_name then
+            return self.use_name and self.use_name:upper() or self.name:upper()
+        elseif (Game.state == "OVERWORLD" and Game:isLight()) or (Game.state == "BATTLE" and Game.battle.light)  then
+            return self.use_name or self:getName()
+        else
+            return self.light and self.use_name and self.use_name:upper() or orig(self)
+        end
     end)
     
     Utils.hook(Item, "canEquip", function(orig, self, character, slot_type, slot_index)
@@ -851,7 +1060,7 @@ function lib:init()
         end
     end)
     
-    if not Kristal.getLibConfig("magical-glass", "key_item_conversion") then
+    if not Kristal.getLibConfig("magical-glass", "item_conversion") then
         -- Don't give the ball of junk
         Utils.hook(LightInventory, "getDarkInventory", function(orig, self)
             return Game.dark_inventory
@@ -928,8 +1137,252 @@ function lib:init()
                 end
             end
         end)
+        
+        Utils.hook(Game, "convertToLight", function(orig, self)
+            local inventory = self.inventory
+
+            self.inventory = inventory:convertToLight()
+
+            for _,chara in pairs(self.party_data) do
+                chara:convertToLight()
+            end
+        end)
+        
+        Utils.hook(Game, "convertToDark", function(orig, self)
+            local inventory = self.inventory
+
+            self.inventory = inventory:convertToDark()
+
+            for _,chara in pairs(self.party_data) do
+                chara:convertToDark()
+            end
+        end)
     end
     Utils.hook(LightEquipItem, "convertToDark", function(orig, self, inventory) return false end)
+    
+    Utils.hook(LightEquipItem, "init", function(orig, self)
+        orig(self)
+        
+        self.storage, self.index = nil, nil
+
+        self.target = "ally"
+    end)
+    
+    Utils.hook(LightEquipItem, "onManualEquip", function(orig, self, target, replacement)
+        local can_equip = true
+    
+        if (not self:onEquip(target, replacement)) then can_equip = false end
+        if replacement and (not replacement:onUnequip(target, self)) then can_equip = false end
+        if (not target:onEquip(self, replacement)) then can_equip = false end
+        if (not target:onUnequip(replacement, self)) then can_equip = false end
+        if (not self:canEquip(target, self.type, 1)) then can_equip = false end
+        
+        -- If one of the functions returned false, the equipping will fail
+        return can_equip
+    end)
+    
+    Utils.hook(LightEquipItem, "onBattleSelect", function(orig, self, user, target)
+        self.storage, self.index = Game.inventory:getItemIndex(self)
+        return true
+    end)
+    
+    Utils.hook(LightEquipItem, "showEquipText", function(orig, self, target)
+        Game.world:showText("* " .. target:getNameOrYou() .. " equipped the " .. self:getName() .. ".")
+    end)
+    
+    Utils.hook(LightEquipItem, "showEquipTextFail", function(orig, self, target)
+        Game.world:showText("* " .. target:getNameOrYou() .. " didn't want to equip the " .. self:getName() .. ".")
+    end)
+    
+    Utils.hook(LightEquipItem, "onWorldUse", function(orig, self, target)
+        local chara = target
+        local replacing = nil
+
+        if self.type == "weapon" then
+            replacing = chara:getWeapon()
+        elseif self.type == "armor" then
+            replacing = chara:getArmor(1)
+        end
+        
+        if self:onManualEquip(chara, replacing) then
+            Assets.playSound("item")
+            if replacing then
+                Game.inventory:replaceItem(self, replacing)
+            end
+            if self.type == "weapon" then
+                chara:setWeapon(self)
+            elseif self.type == "armor" then
+                chara:setArmor(1, self)
+            else
+                error("LightEquipItem "..self.id.." invalid type: "..self.type)
+            end
+            
+            self:showEquipText(target)
+            return replacing == nil
+        else
+            self:showEquipTextFail(target)
+            return false
+        end
+    end)
+    
+    Utils.hook(LightEquipItem, "getLightBattleText", function(orig, self, user, target)
+        local text = "* "..target.chara:getNameOrYou().." equipped the "..self:getUseName().."."
+        if user ~= target then
+            text = "* "..user.chara:getNameOrYou().." gave the "..self:getUseName().." to "..target.chara:getNameOrYou(true)..".\n" .. "* "..target.chara:getNameOrYou().." equipped it."
+        end
+        return text
+    end)
+    
+    Utils.hook(LightEquipItem, "getLightBattleTextFail", function(orig, self, user, target)
+        local text = "* "..target.chara:getNameOrYou().." didn't want to equip the "..self:getUseName().."."
+        if user ~= target then
+            text = "* "..user.chara:getNameOrYou().." gave the "..self:getUseName().." to "..target.chara:getNameOrYou(true)..".\n" .. "* "..target.chara:getNameOrYou().." didn't want to equip it."
+        end
+        return text
+    end)
+    
+    Utils.hook(LightEquipItem, "getBattleText", function(orig, self, user, target)
+        local replacing = nil
+
+        if self.type == "weapon" then
+            replacing = target.chara:getWeapon()
+        elseif self.type == "armor" then
+            replacing = target.chara:getArmor(1)
+        end
+        
+        if self:onManualEquip(target.chara, replacing) then
+            local text = "* "..target.chara:getName().." equipped the "..self:getUseName().."!"
+            if user ~= target then
+                text = "* "..user.chara:getName().." gave the "..self:getUseName().." to "..target.chara:getName().."!\n" .. "* "..target.chara:getName().." equipped it!"
+            end
+            return text
+        else
+            local text = "* "..target.chara:getName().." didn't want to equip the "..self:getUseName().."."
+            if user ~= target then
+                text = "* "..user.chara:getName().." gave the "..self:getUseName().." to "..target.chara:getName().."!\n" .. "* "..target.chara:getName().." didn't want to equip it."
+            end
+            return text
+        end
+    end)
+    
+    Utils.hook(LightEquipItem, "onLightBattleUse", function(orig, self, user, target)
+        local chara = target.chara
+        local replacing = nil
+
+        if self.type == "weapon" then
+            replacing = chara:getWeapon()
+        elseif self.type == "armor" then
+            replacing = chara:getArmor(1)
+        end
+    
+        if self:onManualEquip(chara, replacing) then
+            Assets.playSound("item")
+            if replacing then
+                Game.inventory:addItemTo(self.storage, self.index, replacing)
+            end
+            if self.type == "weapon" then
+                chara:setWeapon(self)
+            elseif self.type == "armor" then
+                chara:setArmor(1, self)
+            else
+                error("LightEquipItem "..self.id.." invalid type: "..self.type)
+            end
+            
+            Game.battle:battleText(self:getLightBattleText(user, target))
+        else
+            Game.inventory:addItemTo(self.storage, self.index, self)
+            Game.battle:battleText(self:getLightBattleTextFail(user, target))
+        end
+        self.storage, self.index = nil, nil
+    end)
+    
+    Utils.hook(LightEquipItem, "onBattleUse", function(orig, self, user, target)
+        local chara = target.chara
+        local replacing = nil
+
+        if self.type == "weapon" then
+            replacing = chara:getWeapon()
+        elseif self.type == "armor" then
+            replacing = chara:getArmor(1)
+        end
+    
+        if self:onManualEquip(chara, replacing) then
+            Assets.playSound("item")
+            if replacing then
+                Game.inventory:addItemTo(self.storage, self.index, replacing)
+            end
+            if self.type == "weapon" then
+                chara:setWeapon(self)
+            elseif self.type == "armor" then
+                chara:setArmor(1, self)
+            else
+                error("LightEquipItem "..self.id.." invalid type: "..self.type)
+            end
+        else
+            Game.inventory:addItemTo(self.storage, self.index, self)
+        end
+        self.storage, self.index = nil, nil
+    end)
+    
+    Utils.hook(Item, "getEquipDisplayName", function(orig, self)
+        return self.equip_display_name or self:getName()
+    end)
+    
+    Utils.hook(Item, "getHealBonus", function(orig, self) return self.heal_bonus end)
+    Utils.hook(Item, "getInvBonus", function(orig, self) return self.inv_bonus end)
+    Utils.hook(Item, "getFleeBonus", function(orig, self) return self.flee_bonus end)
+    
+    Utils.hook(Item, "getLightBoltCount", function(orig, self) return self.light_bolt_count end)
+    
+    Utils.hook(Item, "getLightBoltSpeed", function(orig, self)
+        if Game.battle.multi_mode then
+            return nil
+        else
+            return self.light_bolt_speed + Utils.random(0, self:getLightBoltSpeedVariance(), 1)
+        end
+    end)
+    
+    Utils.hook(Item, "getLightBoltAcceleration", function(orig, self) return self.light_bolt_acceleration end)
+    
+    Utils.hook(Item, "getLightBoltSpeedVariance", function(orig, self) return self.light_bolt_speed_variance end)
+    
+    Utils.hook(Item, "getLightBoltStart", function(orig, self)
+        if Game.battle.multi_mode then
+            return nil
+        elseif type(self.light_bolt_start) == "table" then
+            return Utils.pick(self.light_bolt_start)
+        elseif type(self.light_bolt_start) == "number" then
+            return self.light_bolt_start
+        end
+    end)
+    
+    Utils.hook(Item, "getLightMultiboltVariance", function(orig, self, index)
+        if Game.battle.multi_mode or self.light_multibolt_variance == nil then
+            return nil
+        elseif type(self.light_multibolt_variance) == "number" then
+            return self.light_multibolt_variance * index
+        elseif self.light_multibolt_variance[index] then
+            return type(self.light_multibolt_variance[index]) == "table" and Utils.pick(self.light_multibolt_variance[index]) or self.light_multibolt_variance[index]
+        else
+            return (type(self.light_multibolt_variance[#self.light_multibolt_variance]) == "table" and Utils.pick(self.light_multibolt_variance[#self.light_multibolt_variance]) or self.light_multibolt_variance[#self.light_multibolt_variance]) * (index - #self.light_multibolt_variance + 1)
+        end
+    end)
+    
+    Utils.hook(Item, "getLightBoltDirection", function(orig, self)
+        if self.light_bolt_direction == "random" or not self.light and self.light_bolt_direction == nil then
+            return Utils.pick({"right", "left"})
+        else
+            return self.light_bolt_direction or "right"
+        end
+    end)
+    
+    Utils.hook(Item, "getLightAttackMissZone", function(orig, self) return self.light_bolt_miss_threshold end)
+    
+    Utils.hook(Item, "getLightAttackSprite", function(orig, self) return self.attack_sprite end)
+    Utils.hook(Item, "getLightAttackSound", function(orig, self) return self.attack_sound end)
+    Utils.hook(Item, "getLightAttackPitch", function(orig, self) return self.attack_pitch end)
+    
+    Utils.hook(Item, "onLightBoltHit", function(orig, self, battler) end)
     
     Utils.hook(Item, "getLightBattleText", function(orig, self, user, target)
         if self.target == "ally" then
@@ -948,15 +1401,15 @@ function lib:init()
     end)
     
     Utils.hook(Item, "getLightBattleHealingText", function(orig, self, user, target, amount)
-        if target then
-            if self.target == "ally" then
-                maxed = target.chara:getHealth() >= target.chara:getStat("health") or amount >= math.huge
-            elseif self.target == "enemy" then
-                maxed = target.health >= target.max_health or amount >= math.huge
-            end
+        local maxed = false
+        if self.target == "ally" then
+            maxed = target.chara:getHealth() >= target.chara:getStat("health") or amount == math.huge
+        elseif self.target == "enemy" then
+            maxed = target.health >= target.max_health or amount == math.huge
+        elseif self.target == "party" and #Game.battle.party == 1 then
+            maxed = target[1].chara:getHealth() >= target[1].chara:getStat("health") or amount == math.huge
         end
-
-        local message
+        local message = ""
         if self.target == "ally" then
             if select(2, target.chara:getNameOrYou()) and maxed then
                 message = "* Your HP was maxed out."
@@ -966,7 +1419,13 @@ function lib:init()
                 message = "* " .. target.chara:getNameOrYou() .. " recovered " .. amount .. " HP."
             end
         elseif self.target == "party" then
-            message = "* " .. target.chara:getNameOrYou() .. " recovered " .. amount .. " HP."
+            if #Game.battle.party > 1 then
+                message = "* Everyone recovered " .. amount .. " HP."
+            elseif maxed then
+                message = "* Your HP was maxed out."
+            else
+                message = "* You recovered " .. amount .. " HP."
+            end
         elseif self.target == "enemy" then
             if maxed then
                 message = "* " .. target.name .. "'s HP was maxed out."
@@ -974,7 +1433,7 @@ function lib:init()
                 message = "* " .. target.name .. " recovered " .. amount .. " HP."
             end
         elseif self.target == "enemies" then
-            message = "* The enemies all recovered " .. amount .. " HP."
+            message = "* The enemies recovered " .. amount .. " HP."
         end
         return message
     end)
@@ -1008,16 +1467,8 @@ function lib:init()
         return ""
     end)
 
-    Utils.hook(Item, "getShortName", function(orig, self) return self.short_name or self.name end)
-    Utils.hook(Item, "getSeriousName", function(orig, self) return self.serious_name or self.short_name or self.name end)
-
-    Utils.hook(Item, "getUseName", function(orig, self)
-        if (Game.state == "OVERWORLD" and Game:isLight()) or (Game.state == "BATTLE" and Game.battle.light)  then
-            return self.light and self.use_name or self:getName()
-        else
-            return not self.light and self.use_name or self.use_name and self.use_name:upper() or self:getName():upper()
-        end
-    end)
+    Utils.hook(Item, "getShortName", function(orig, self) return self.short_name or self:getName() end)
+    Utils.hook(Item, "getSeriousName", function(orig, self) return self.serious_name or self:getShortName() end)
 
     Utils.hook(Item, "getUseMethod", function(orig, self, target)
         if type(target) == "string" then
@@ -1029,7 +1480,7 @@ function lib:init()
                 return self.use_method
             end
         elseif isClass(target) then
-            if (target.id ~= Game.party[1].id and self.use_method_other and self.target ~= "party") or force_other then
+            if (not select(2, target:getNameOrYou()) or target.id ~= Game.party[1].id) and self.use_method_other and self.target ~= "party" then
                 return self.use_method_other
             else
                 return self.use_method
@@ -1044,11 +1495,11 @@ function lib:init()
         if self:getLightBattleText(user, target) then
             Game.battle:battleText(self:getLightBattleText(user, target))
         else
-            Game.battle:battleText("* "..user.chara:getNameOrYou().." used the "..self:getUseName().."!")
+            Game.battle:battleText("* "..user.chara:getNameOrYou().." "..self:getUseMethod(user.chara).." the "..self:getUseName()..".")
         end
     end)
     
-    Utils.hook(Item, "onLightAttack", function(orig, self, battler, enemy, damage, stretch)
+    Utils.hook(Item, "onLightAttack", function(orig, self, battler, enemy, damage, stretch, crit)
         if damage <= 0 then
             enemy:onDodge(battler, true)
         end
@@ -1056,8 +1507,8 @@ function lib:init()
         local src = Assets.stopAndPlaySound(Game:isLight() and (self.getLightAttackSound and self:getLightAttackSound() or "laz_c") or battler.chara:getAttackSound() or "laz_c")
         -- src:setPitch(self.getLightAttackPitch and self:getLightAttackPitch() or 1)
         src:setPitch(Game:isLight() and (self.getLightAttackPitch and self:getLightAttackPitch() or 1) or battler.chara:getAttackPitch() or 1)
-        -- local sprite = Sprite(self.getLightAttackSprite and self:getLightAttackSprite() or "effects/attack/strike")
-        local sprite = Sprite(Game:isLight() and (self.getLightAttackSprite and self:getLightAttackSprite() or "effects/attack/strike") or battler.chara:getAttackSprite() or "effects/attack/cut") -- dark stuff here
+        -- local sprite = Sprite(self.getLightAttackSprite and self:getLightAttackSprite() or "effects/lightattack/strike")
+        local sprite = Sprite(Game:isLight() and (self.getLightAttackSprite and self:getLightAttackSprite() or "effects/lightattack/strike") or battler.chara:getAttackSprite() or "effects/attack/cut") -- dark stuff here
         sprite.battler_id = battler and Game.battle:getPartyIndex(battler.chara.id) or nil
         table.insert(enemy.dmg_sprites, sprite)
         sprite:setOrigin(0.5)
@@ -1069,188 +1520,74 @@ function lib:init()
         end
         local relative_pos_x, relative_pos_y = enemy:getRelativePos((enemy.width / 2) - (#Game.battle.attackers - 1) * 5 / 2 + (Utils.getIndex(Game.battle.attackers, battler) - 1) * 5, (enemy.height / 2) - 8)
         sprite:setPosition(relative_pos_x + enemy.dmg_sprite_offset[1], relative_pos_y + enemy.dmg_sprite_offset[2])
-        sprite.layer = BATTLE_LAYERS["above_ui"] + 5
+        sprite.layer = LIGHT_BATTLE_LAYERS["above_arena_border"]
         enemy.parent:addChild(sprite)
-        -- sprite:play((stretch^(1/1.5) / 4) / 1.5, false, function(this)
-        sprite:play(Game:isLight() and ((stretch^(1/1.5) / 4) / 1.5) or 1/8, false, function(this) -- dark stuff here
-            local sound = enemy:getDamageSound() or "damage"
-            if sound and type(sound) == "string" and (damage > 0 or enemy.always_play_damage_sound) then
-                Assets.stopAndPlaySound(sound)
-            end
-            enemy:hurt(damage, battler)
-
-            if Game:isLight() then -- dark stuff here
-                battler.chara:onLightAttackHit(enemy, damage)
-            else
-                battler.chara:onAttackHit(enemy, damage)
-            end
+        -- sprite:play((stretch / 4) / 1.6, false, function(this)
+        sprite:play(Game:isLight() and (stretch / 4) / 1.6 or 1/8, false, function(this) -- dark stuff here
+            Game.battle.timer:after(3/30, function()
+                self:onLightAttackHurt(battler, enemy, damage, stretch, crit, Game:isLight())
+            end)
+            
             this:remove()
             Utils.removeFromTable(enemy.dmg_sprites, this)
-
-            Game.battle:finishActionBy(battler)
         end)
 
         return false
     end)
+    
+    Utils.hook(Item, "onLightAttackHurt", function(orig, self, battler, enemy, damage, stretch, crit, light, finish)
+        local sound = enemy:getDamageSound() or "damage"
+        if sound and type(sound) == "string" and (damage > 0 or enemy.always_play_damage_sound) then
+            Assets.stopAndPlaySound(sound)
+        end
+        enemy:hurt(damage, battler)
 
-    Utils.hook(Item, "onLightMiss", function(orig, self, battler, enemy, anim, attacked)
-        enemy:hurt(0, battler, nil, nil, anim, attacked)
+        if light ~= false then
+            battler.chara:onLightAttackHit(enemy, damage)
+        else
+            battler.chara:onAttackHit(enemy, damage)
+        end
+
+        if finish ~= false then
+            Game.battle:finishActionBy(battler)
+        end
     end)
 
-    Utils.hook(Item, "onActionSelect", function(orig, self, battler) end)
+    Utils.hook(Item, "onLightMiss", function(orig, self, battler, enemy, anim, show_status, attacked)
+        enemy:hurt(0, battler, nil, nil, anim, show_status, attacked)
+    end)
 
     Utils.hook(Textbox, "init", function(orig, self, x, y, width, height, default_font, default_font_size, battle_box)
-        Object.init(self, x, y, width, height)
-
-        self.box = UIBox(0, 0, width, height)
-        self.box.layer = -1
-        self.box.debug_select = false
-        self:addChild(self.box)
-    
-        self.battle_box = battle_box
-        if battle_box then
-            self.box.visible = false
-        end
-
+        orig(self, x, y, width, height, default_font, default_font_size, battle_box)
+        
         if battle_box then
             if Game.battle.light then
+                Textbox.REACTION_X_BATTLE = Textbox.REACTION_X
+                Textbox.REACTION_Y_BATTLE = Textbox.REACTION_Y
+            
                 self.face_x = 6
-                self.face_y = -2
-        
+                self.face_y = -3
+                
                 self.text_x = 0
-                self.text_y = -2 
+                self.text_y = -2
+                
+                self.face:setPosition(self.face_x, self.face_y)
+                self.text:setPosition(self.text_x, self.text_y)
             else
-                self.face_x = -4
-                self.face_y = 2
-        
-                self.text_x = 0
-                self.text_y = -2 -- TODO: This was changed 2px lower with the new font, but it was 4px offset. Why? (Used to be 0)
+                Textbox.REACTION_X_BATTLE = ORIG_REACTION_X_BATTLE
+                Textbox.REACTION_Y_BATTLE = ORIG_REACTION_Y_BATTLE
             end
-        elseif Game:isLight() then
-            self.face_x = 13
-            self.face_y = 6
-    
-            self.text_x = 2
-            self.text_y = -4
-        else
-            self.face_x = 18
-            self.face_y = 6
-    
-            self.text_x = 2
-            self.text_y = -4  -- TODO: This was changed with the new font but it's accurate anyways
         end
-    
-        self.actor = nil
-    
-        self.default_font = default_font or "main_mono"
-        self.default_font_size = default_font_size
-    
-        self.font = self.default_font
-        self.font_size = self.default_font_size
-    
-        self.face = Sprite(nil, self.face_x, self.face_y, nil, nil, "face")
-        self.face:setScale(2)
-        self.face.getDebugOptions = function(self2, context)
-            context = Object.getDebugOptions(self2, context)
-            if Kristal.DebugSystem then
-                context:addMenuItem("Change", "Change this portrait to a different one", function()
-                    Kristal.DebugSystem:setState("FACES", self)
-                end)
-            end
-            return context
-        end
-        self:addChild(self.face)
-    
-        -- Added text width for autowrapping
-        self.wrap_add_w = battle_box and 0 or 14
-    
-        self.text = DialogueText("", self.text_x, self.text_y, width + self.wrap_add_w, SCREEN_HEIGHT)
-        self:addChild(self.text)
-    
-        self.reactions = {}
-        self.reaction_instances = {}
-    
-        self.text:registerCommand("face", function(text, node, dry)
-            if self.actor and self.actor:getPortraitPath() then
-                self.face.path = self.actor:getPortraitPath()
-            end
-            self:setFace(node.arguments[1], tonumber(node.arguments[2]), tonumber(node.arguments[3]))
-        end)
-        self.text:registerCommand("facec", function(text, node, dry)
-            self.face.path = "face"
-            local ox, oy = tonumber(node.arguments[2]), tonumber(node.arguments[3])
-            if self.actor then
-                local actor_ox, actor_oy = self.actor:getPortraitOffset()
-                ox = (ox or 0) - actor_ox
-                oy = (oy or 0) - actor_oy
-            end
-            self:setFace(node.arguments[1], ox, oy)
-        end)
-    
-        self.text:registerCommand("react", function(text, node, dry)
-            local react_data
-            if #node.arguments > 1 then
-                react_data = {
-                    text = node.arguments[1],
-                    x = tonumber(node.arguments[2]) or (self.battle_box and self.REACTION_X_BATTLE[node.arguments[2]] or self.REACTION_X[node.arguments[2]]),
-                    y = tonumber(node.arguments[3]) or (self.battle_box and self.REACTION_Y_BATTLE[node.arguments[3]] or self.REACTION_Y[node.arguments[3]]),
-                    face = node.arguments[4],
-                    actor = node.arguments[5] and Registry.createActor(node.arguments[5]),
-                }
-            else
-                react_data = tonumber(node.arguments[1]) and self.reactions[tonumber(node.arguments[1])] or self.reactions[node.arguments[1]]
-            end
-            local reaction = SmallFaceText(react_data.text, react_data.x, react_data.y, react_data.face, react_data.actor)
-            reaction.layer = 0.1 + (#self.reaction_instances) * 0.01
-            self:addChild(reaction)
-            table.insert(self.reaction_instances, reaction)
-        end, {instant = false})
-        
-        self.minifaces = {}
-        self.miniface_path = "face/mini"
-
-        self.text:registerCommand("miniface", function(text, node, dry)
-            local ox = tonumber(node.arguments[2]) or 0
-            local oy = tonumber(node.arguments[3]) or 0
-            if self.actor then
-                local actor_ox, actor_oy = self.actor:getMinifaceOffset()
-                ox = actor_ox
-                oy = actor_oy
-            end
-            local x_scale = tonumber(node.arguments[4]) or 2
-            local y_scale = tonumber(node.arguments[5]) or 2
-            local speed = tonumber(node.arguments[6]) or (4/30)
-            local y = self.text.state.current_y
-            if (not dry) then
-                local miniface = Sprite(nil, 0 + ox, y + oy)
-                miniface:setScale(x_scale, y_scale)
-                miniface:setSprite(self.miniface_path.. "/" ..node.arguments[1])
-                miniface:play(speed)
-                if #self.minifaces > 0 then
-                    local last_face = self.minifaces[#self.minifaces]
-                    last_face:stop()
-                end
-                self:addChild(miniface)
-                table.insert(self.minifaces, miniface)
-                if self.actor and self.actor:getMiniface() then
-                    self.miniface_path = self.actor:getMiniface()
-                else
-                    self.miniface_path = "face/mini"
-                end
-                self.text.state.indent_mode = true
-                self.text.state.indent_length = miniface.width * miniface.scale_x + 15
-                self.text.state.current_x = self.text.state.indent_length + self.text.state.spacing
-            end
-        end)
-    
-        self.advance_callback = nil
     end)
 
     Utils.hook(DialogueText, "init", function(orig, self, text, x, y, w, h, options)
-        orig(self, text, x, y, w, h, options)
         options = options or {}
         self.default_sound = options["default_sound"] or "default"
         self.no_sound_overlap = options["no_sound_overlap"] or false
+        if options["no_sound_overlap"] == nil and Game.battle and Game.battle.light then
+            self.no_sound_overlap = true
+        end
+        orig(self, text, x, y, w, h, options)
     end)
 
     Utils.hook(DialogueText, "resetState", function(orig, self)
@@ -1259,29 +1596,35 @@ function lib:init()
     end)
 
     Utils.hook(DialogueText, "playTextSound", function(orig, self, current_node)
-        if self.state.skipping and (Input.down("cancel") or self.played_first_sound) then
+        if self.state.skipping and (Input.down("cancel") and Kristal.getLibConfig("magical-glass", "undertale_text_skipping") ~= true or self.played_first_sound) then
             return
         end
-    
+
         if current_node.type ~= "character" then
             return
         end
-    
-        local no_sound = {"\n", " ", "^", "!", ".", "?", ",", ":", "/", "\\", "|", "*"}
-    
+
+        local no_sound = { "\n", " ", "^", "!", ".", "?", ",", ":", "/", "\\", "|", "*" }
+
         if (Utils.containsValue(no_sound, current_node.character)) then
             return
         end
-    
+
         if (self.state.typing_sound ~= nil) and (self.state.typing_sound ~= "") then
             self.played_first_sound = true
-            if Kristal.callEvent(KRISTAL_EVENT.onTextSound, self.state.typing_sound, current_node) then
+            if Kristal.callEvent(KRISTAL_EVENT.onTextSound, self.state.typing_sound, current_node, self.state) then
                 return
             end
-            if self.no_sound_overlap then
-                Assets.stopAndPlaySound("voice/"..self.state.typing_sound)
+            if self:getActor()
+                and (self:getActor():getVoice() or "default") == self.state.typing_sound
+                and self:getActor():onTextSound(current_node, self.state) then
+                return
+            end
+            
+            if not self.no_sound_overlap then
+                Assets.playSound("voice/" .. self.state.typing_sound)
             else
-                Assets.playSound("voice/"..self.state.typing_sound)
+                Assets.stopAndPlaySound("voice/" .. self.state.typing_sound)
             end
         end
     end)
@@ -1290,10 +1633,8 @@ function lib:init()
         local speed = self.state.speed
 
         if not OVERLAY_OPEN then
-
-            if Kristal.getLibConfig("magical-glass", "undertale_text_skipping") then
-
-                local input = self.can_advance and (Input.pressed("confirm") or (Input.down("menu") and self.fast_skipping_timer >= 1))
+            if Kristal.getLibConfig("magical-glass", "undertale_text_skipping") == true then
+                local input = self.can_advance and Input.pressed("confirm")
 
                 if input or self.auto_advance or self.should_advance then
                     self.should_advance = false
@@ -1301,29 +1642,35 @@ function lib:init()
                         self:advance()
                     end
                 end
+                
+                self.fast_skipping_timer = 0
         
-                if self.skippable and (Input.pressed("cancel") and not self.state.noskip) then
+                if self.skippable and not self.state.noskip then
                     if not self.skip_speed then
-                        self.state.skipping = true
+                        if Input.pressed("cancel") then
+                            self.state.skipping = true
+                        end
                     else
-                        speed = speed * 2
+                        if Input.down("cancel") then
+                            speed = speed * 2
+                        end
                     end
                 end
-
             else
                 if Input.pressed("menu") then
                     self.fast_skipping_timer = 1
                 end
-        
-                local input = self.can_advance and (Input.pressed("confirm") or (Input.down("menu") and self.fast_skipping_timer >= 1))
-        
+
+                local input = self.can_advance and
+                    (Input.pressed("confirm") or (Input.down("menu") and self.fast_skipping_timer >= 1))
+
                 if input or self.auto_advance or self.should_advance then
                     self.should_advance = false
                     if not self.state.typing then
                         self:advance()
                     end
                 end
-        
+
                 if Input.down("menu") then
                     if self.fast_skipping_timer < 1 then
                         self.fast_skipping_timer = self.fast_skipping_timer + DTMULT
@@ -1331,7 +1678,7 @@ function lib:init()
                 else
                     self.fast_skipping_timer = 0
                 end
-                
+
                 if self.skippable and ((Input.down("cancel") and not self.state.noskip) or (Input.down("menu") and not self.state.noskip)) then
                     if not self.skip_speed then
                         self.state.skipping = true
@@ -1340,41 +1687,40 @@ function lib:init()
                     end
                 end
             end
-    
         end
-    
+
         if self.state.waiting == 0 then
             self.state.progress = self.state.progress + (DT * 30 * speed)
         else
             self.state.waiting = math.max(0, self.state.waiting - DT)
         end
-    
+
         if self.state.typing then
-            self:drawToCanvas(function()
+            self:drawToCanvas(function ()
                 while (math.floor(self.state.progress) > self.state.typed_characters) or self.state.skipping do
                     local current_node = self.nodes[self.state.current_node]
-    
+
                     if current_node == nil then
                         self.state.typing = false
                         break
                     end
-    
+
                     self:playTextSound(current_node)
                     self:processNode(current_node, false)
-    
+
                     if self.state.skipping then
                         self.state.progress = self.state.typed_characters
                     end
-    
+
                     self.state.current_node = self.state.current_node + 1
                 end
             end)
         end
-    
+
         self:updateTalkSprite(self.state.talk_anim and self.state.typing)
-    
+
         Text.update(self)
-    
+
         self.last_talking = self.state.talk_anim and self.state.typing
     end)
 
@@ -1383,7 +1729,11 @@ function lib:init()
         if Game:isLight() then
             self.inv_timer = 1
         end
-        self.bonus_damage = true -- Whether the bullet deals bonus damage when having more HP (Light Battles only)
+        if Game.battle.light then
+            self.destroy_on_hit = "alt"
+            self.layer = LIGHT_BATTLE_LAYERS["bullets"]
+        end
+        self.bonus_damage = true -- Whether the bullet deals bonus damage when having more HP (Light World only)
         self.remove_outside_of_arena = false
     end)
     
@@ -1391,47 +1741,72 @@ function lib:init()
         lib.bonus_damage = self.bonus_damage
         local battlers = orig(self, soul)
         lib.bonus_damage = nil
+        
+        if self:getDamage() > 0 then
+            local best_amount
+            for _,battler in ipairs(battlers) do
+                local equip_amount = 0
+                for _,equip in ipairs(battler.chara:getEquipment()) do
+                    if equip.getInvBonus then
+                        equip_amount = equip_amount + equip:getInvBonus()
+                    end
+                end
+                if not best_amount or equip_amount > best_amount then
+                    best_amount = equip_amount
+                end
+            end
+            soul.inv_timer = soul.inv_timer + (best_amount or 0)
+        end
+        
         return battlers
     end)
 
     Utils.hook(Bullet, "update", function(orig, self)
         orig(self)
-        if self.remove_outside_of_arena then
-            if self.x < Game.battle.arena.left then
-                self:remove()
-            elseif self.x > Game.battle.arena.right then
-                self:remove()
-            elseif self.y > Game.battle.arena.bottom then
-                self:remove()
-            elseif self.y < Game.battle.arena.top then
+        local x, y = self:getScreenPos()
+        if self.remove_outside_of_arena and
+            (x < Game.battle.arena.left or
+            x > Game.battle.arena.right or
+            y > Game.battle.arena.bottom or
+            y < Game.battle.arena.top)
+            then
+            self:remove()
+        end
+    end)
+    
+    Utils.hook(Bullet, "onCollide", function(orig, self, soul)
+        if soul.inv_timer == 0 then
+            self:onDamage(soul)
+            if self.destroy_on_hit then
                 self:remove()
             end
+        elseif self.destroy_on_hit == true then
+            self:remove()
         end
     end)
 
     Utils.hook(LightItemMenu, "init", function(orig, self)
-    
         orig(self)
-
-        -- States: ITEMSELECT, ITEMOPTION, PARTYSELECT
+        if TARGET_MOD == "dpr_main" then return end
 
         if Mod.libs["moreparty"] and #Game.party > 3 then
             if not Kristal.getLibConfig("moreparty", "classic_mode") then
-                self.party_select_bg = UIBox(-92, 242, 482, #Game.party == 4 and 52 or 90)
+                self.party_select_bg = UIBox(-97, 242, 492, #Game.party == 4 and 52 or 90)
             else
-                self.party_select_bg = UIBox(-36, 242, 370, 90)
+                self.party_select_bg = UIBox(-37, 242, 372, 90)
             end
         else
-            self.party_select_bg = UIBox(-36, 242, 370, 52)
+            self.party_select_bg = UIBox(-37, 242, 372, 52)
         end
         self.party_select_bg.visible = false
         self.party_select_bg.layer = -1
         self.party_selecting = 1
         self:addChild(self.party_select_bg)
-
     end)
     
     Utils.hook(LightItemMenu, "update", function(orig, self)
+        if TARGET_MOD == "dpr_main" then orig(self) return end
+        
         if self.state == "ITEMOPTION" then
             if Input.pressed("cancel") then
                 self.state = "ITEMSELECT"
@@ -1458,7 +1833,7 @@ function lib:init()
                 local item = Game.inventory:getItem(self.storage, self.item_selecting)
                 if self.option_selecting == 1 and (item.usable_in == "world" or item.usable_in == "all") and not (item.target == "enemy" or item.target == "enemies") then
                     self.party_selecting = 1
-                    if #Game.party > 1 and not item.skip_overworld_selection and item.target == "ally" then
+                    if #Game.party > 1 and item.target == "ally" then
                         self.ui_select:stop()
                         self.ui_select:play()
                         self.party_select_bg.visible = true
@@ -1498,56 +1873,107 @@ function lib:init()
 
             if Input.pressed("confirm") then
                 local item = Game.inventory:getItem(self.storage, self.item_selecting)
-                self:useItem(item)
+                -- TODO: Make it so weapons can only be equipped to certain party members (Why doesn't this code work?)
+                if item.type ~= "weapon" or item.equipable[Game.party[self.party_selecting].id] == true then
+                    self:useItem(item, self.party_selecting)
+                else
+                    Assets.stopAndPlaySound("ui_cant_select")
+                end
             end
 
         else
             orig(self)
         end
-
     end)
 
     Utils.hook(LightItemMenu, "draw", function(orig, self)
-        Object.draw(self)
+        if TARGET_MOD == "dpr_main" then orig(self) return end
+        
+        love.graphics.setFont(self.font)
 
-        -- Draw items as plain text, when on the "storage select" part of the menu
-        if Utils.containsValue(Input.component_stack, self.menu_storageselect) then
-            Draw.setColor(COLORS.gray)
-            for i, item in ipairs(self.storage) do
-                if i > 8 then break end -- Can only fit 8 items, don't draw any more
-                love.graphics.print(item:getName(), 28, 40 + 32 * (i-1))
+        local inventory = Game.inventory:getStorage(self.storage)
+    
+        for index, item in ipairs(inventory) do
+            if (item.usable_in == "world" or item.usable_in == "all") and not (item.target == "enemy" or item.target == "enemies") then
+                Draw.setColor(PALETTE["world_text"])
+            else
+                Draw.setColor(PALETTE["world_text_unusable"])
             end
+            if self.state == "PARTYSELECT" then
+                local function party_box_area()
+                    local party_box = self.party_select_bg
+                    love.graphics.rectangle("fill", party_box.x - 24, party_box.y - 24, party_box.width + 48, party_box.height + 48)
+                end
+                love.graphics.stencil(party_box_area, "replace", 1)
+                love.graphics.setStencilTest("equal", 0)
+            end
+            love.graphics.print(item:getName(), 20, -28 + (index * 32))
+            love.graphics.setStencilTest()
         end
 
-        local font = love.graphics.getFont()
-        love.graphics.setFont(Assets.getFont("main"))
-        if self.party_select_bg.visible then
-            local item = Game.inventory:getItem(self.storage, self.selected_item)
-            love.graphics.printf("Use " .. item:getName() .. " on", -45, 233, 400, "center")
+        if self.state ~= "PARTYSELECT" then
+            local item = Game.inventory:getItem(self.storage, self.item_selecting)
+            -- TODO: Make it so weapons can only be equipped to certain party members (Why doesn't this code work?)
+            if (item.usable_in == "world" or item.usable_in == "all") and not (item.target == "enemy" or item.target == "enemies") then
+                Draw.setColor(PALETTE["world_text"])
+            else
+                Draw.setColor(PALETTE["world_gray"])
+            end
+            love.graphics.print("USE" , 20 , 284)
+            Draw.setColor(PALETTE["world_text"])
+            love.graphics.print("INFO", 116, 284)
+            love.graphics.print("DROP", 230, 284)
+        end
     
-    
-            --[[
-            if item.heal_amount then
-                love.graphics.setFont(Assets.getFont("small"))
-                local menu_items = {}
-                menu_items = self.menu_partyselect:getMenuItems()
-                for i, chara in ipairs(Game.party) do
-                    local draw_x = menu_items[i].x - 155
-                    local draw_y = menu_items[i].y + 300
-                    love.graphics.printf(chara.lw_health .. "/" .. chara.lw_stats.health, draw_x, draw_y, 400, "center")
+        Draw.setColor(Game:getSoulColor())
+        if self.state == "ITEMSELECT" then
+            Draw.draw(self.heart_sprite, -4, -20 + (32 * self.item_selecting), 0, 2, 2)
+        elseif self.state == "ITEMOPTION" then
+            if self.option_selecting == 1 then
+                Draw.draw(self.heart_sprite, -4, 292, 0, 2, 2)
+            elseif self.option_selecting == 2 then
+                Draw.draw(self.heart_sprite, 92, 292, 0, 2, 2)
+            elseif self.option_selecting == 3 then
+                Draw.draw(self.heart_sprite, 206, 292, 0, 2, 2)
+            end
+        elseif self.state == "PARTYSELECT" then
+            local item = Game.inventory:getItem(self.storage, self.item_selecting)
+            if item.type ~= "weapon" or item.equipable[Game.party[self.party_selecting].id] == true then
+                Draw.setColor(PALETTE["world_text"])
+            else
+                Draw.setColor(PALETTE["world_gray"])
+            end
+            
+            local z = Mod.libs["moreparty"] and Kristal.getLibConfig("moreparty", "classic_mode") and 3 or 4
+            
+            Draw.printAlign("Use " .. item:getName() .. " on", 150, 231, "center")
+
+            for i,party in ipairs(Game.party) do
+                if i <= z then
+                    love.graphics.print(party:getShortName(), 63 - (math.min(#Game.party,z) - 2) * 70 + (i - 1) * 122, 269)
+                else
+                    love.graphics.print(party:getShortName(), 63 - (math.min(#Game.party - z,z) - 2) * 70 + (i - 1 - z) * 122, 269 + 38)
                 end
             end
-            --]]
-        end
-        --love.graphics.setFont(Assets.getFont("main"))
-    
-        --love.graphics.printf(#self.item .. "/" .. Game.inventory.storages["items"].max, -305, (not Game.world.menu.top and 265 or 33), 400, "center")
-    
-        love.graphics.setFont(font)
 
+            Draw.setColor(Game:getSoulColor())
+            for i,party in ipairs(Game.party) do
+                if i == self.party_selecting then
+                    if i <= z then
+                        Draw.draw(self.heart_sprite, 39 - (math.min(#Game.party,z) - 2) * 70 + (i - 1) * 122, 277, 0, 2, 2)
+                    else
+                        Draw.draw(self.heart_sprite, 39 - (math.min(#Game.party - z,z) - 2) * 70 + (i - 1 - z) * 122, 277 + 38, 0, 2, 2)
+                    end
+                end
+            end
+        end
+
+        Object.draw(self)
     end)
 
     Utils.hook(LightItemMenu, "useItem", function(orig, self, item)
+        if TARGET_MOD == "dpr_main" then orig(self, item) return end
+        
         local result
         if item.target == "ally" then
             result = item:onWorldUse(Game.party[self.party_selecting])
@@ -1563,29 +1989,359 @@ function lib:init()
             end
         end
     end)
+    
+    Utils.hook(World, "onKeyPressed", function(orig, self, key)
+        orig(self, key)
+        if Kristal.Config["debug"] and Input.ctrl() then
+            if key == "s" and Game:isLight() then
+                -- close the old one
+                self.menu:remove()
+                self:closeMenu()
+                
+                local save_pos = nil
+                if Input.shift() then
+                    save_pos = {self.player.x, self.player.y}
+                end
+                if not Kristal.getLibConfig("magical-glass", "expanded_light_save_menu") then
+                    self:openMenu(LightSaveMenu(Game.save_id, save_pos))
+                else
+                    self:openMenu(LightSaveMenuExpanded(save_pos))
+                end
+            end
+        end
+    end)
 
     Utils.hook(World, "heal", function(orig, self, target, amount, text, item)
         if Game:isLight() then
+            lib.heal_amount = amount
+            
             if type(target) == "string" then
                 target = Game:getPartyMember(target)
             end
 
             local maxed = target:heal(amount, false)
-            local message
-            if item and item.getLightWorldHealingText then
-                message = item:getLightWorldHealingText(target, amount, maxed)
-            end
-
-            if text and message then
-                message = text .. "\n" .. message
+            if text and item and item.getLightWorldHealingText and item:getLightWorldHealingText(target, amount, maxed) then
+                if type(text) == "table" then
+                    text[#text] = text[#text] .. (text[#text] ~= "" and "\n" or "") .. item:getLightWorldHealingText(target, amount, maxed)
+                else
+                    text = text .. (text ~= "" and "\n" or "") .. item:getLightWorldHealingText(target, amount, maxed)
+                end
             end
             
-            if not Game.world:hasCutscene() then
-                Game.world:showText(message or text or "ERROR")
+            if text then
+                if not Game.world:hasCutscene() then
+                    Game.world:showText(text)
+                end
+            else
+                Assets.stopAndPlaySound("power")
             end
         else
-            orig(self, target, amount, text, item)
+            orig(self, target, amount, text)
         end
+    end)
+    
+    Utils.hook(HealItem, "onWorldUse", function(orig, self, target)
+        if Game:isLight() then
+            local text = self:getWorldUseText(target)
+            if self.target == "ally" then
+                self:worldUseSound(target)
+                local amount = self:getWorldHealAmount(target.id)
+                local best_amount
+                for _,member in ipairs(Game.party) do
+                    local equip_amount = 0
+                    for _,equip in ipairs(member:getEquipment()) do
+                        if equip.getHealBonus then
+                            equip_amount = equip_amount + equip:getHealBonus()
+                        end
+                    end
+                    if not best_amount or equip_amount > best_amount then
+                        best_amount = equip_amount
+                    end
+                end
+                amount = amount + best_amount
+                Game.world:heal(target, amount, text, self)
+                return true
+            elseif self.target == "party" then
+                self:worldUseSound(target)
+                for _,party_member in ipairs(target) do
+                    local amount = self:getWorldHealAmount(party_member.id)
+                    local best_amount
+                    for _,member in ipairs(Game.party) do
+                        local equip_amount = 0
+                        for _,equip in ipairs(member:getEquipment()) do
+                            if equip.getHealBonus then
+                                equip_amount = equip_amount + equip:getHealBonus()
+                            end
+                        end
+                        if not best_amount or equip_amount > best_amount then
+                            best_amount = equip_amount
+                        end
+                    end
+                    amount = amount + best_amount
+                    Game.world:heal(party_member, amount, text, self)
+                end
+                return true
+            else
+                return false
+            end
+        else
+            return orig(self, target)
+        end
+    end)
+    
+    Utils.hook(HealItem, "onLightBattleUse", function(orig, self, user, target)
+        local text = self:getLightBattleText(user, target)
+
+        if self.target == "ally" then
+            self:battleUseSound(user, target)
+            local amount = self:getBattleHealAmount(target.chara.id)
+
+            for _,equip in ipairs(user.chara:getEquipment()) do
+                if equip.getHealBonus then
+                    amount = amount + equip:getHealBonus()
+                end
+            end
+
+            target:heal(amount, false)
+            if self:getLightBattleHealingText(user, target, amount) then
+                if type(text) == "table" then
+                    text[#text] = text[#text] .. (text[#text] ~= "" and "\n" or "") .. self:getLightBattleHealingText(user, target, amount)
+                else
+                    text = text .. (text ~= "" and "\n" or "") .. self:getLightBattleHealingText(user, target, amount)
+                end
+            end
+            Game.battle:battleText(text)
+            return true
+        elseif self.target == "party" then
+            self:battleUseSound(user, target)
+
+            local amount = 0
+            for _,battler in ipairs(target) do
+                amount = self:getBattleHealAmount(battler.chara.id)
+                for _,equip in ipairs(user.chara:getEquipment()) do
+                    if equip.getHealBonus then
+                        amount = amount + equip:getHealBonus()
+                    end
+                end
+
+                battler:heal(amount, false)
+            end
+
+            if self:getLightBattleHealingText(user, target, amount) then
+                if type(text) == "table" then
+                    text[#text] = text[#text] .. (text[#text] ~= "" and "\n" or "") .. self:getLightBattleHealingText(user, target, amount)
+                else
+                    text = text .. (text ~= "" and "\n" or "") .. self:getLightBattleHealingText(user, target, amount)
+                end
+            end
+            Game.battle:battleText(text)
+            return true
+        elseif self.target == "enemy" then
+            local amount = self:getBattleHealAmount(target.id)
+            
+            for _,equip in ipairs(user.chara:getEquipment()) do
+                if equip.getHealBonus then
+                    amount = amount + equip:getHealBonus()
+                end
+            end
+
+            target:heal(amount)
+            
+            if self:getLightBattleHealingText(user, target, amount) then
+                if type(text) == "table" then
+                    text[#text] = text[#text] .. (text[#text] ~= "" and "\n" or "") .. self:getLightBattleHealingText(user, target, amount)
+                else
+                    text = text .. (text ~= "" and "\n" or "") .. self:getLightBattleHealingText(user, target, amount)
+                end
+            end
+            Game.battle:battleText(text)
+            return true
+        elseif self.target == "enemies" then
+            local amount = 0
+            for _,enemy in ipairs(target) do
+                amount = self:getBattleHealAmount(enemy.id)
+                for _,equip in ipairs(user.chara:getEquipment()) do
+                    if equip.getHealBonus then
+                        amount = amount + equip:getHealBonus()
+                    end
+                end
+                
+                enemy:heal(amount)
+            end
+            
+            if self:getLightBattleHealingText(user, target, amount) then
+                if type(text) == "table" then
+                    text[#text] = text[#text] .. (text[#text] ~= "" and "\n" or "") .. self:getLightBattleHealingText(user, target, amount)
+                else
+                    text = text .. (text ~= "" and "\n" or "") .. self:getLightBattleHealingText(user, target, amount)
+                end
+            end
+            Game.battle:battleText(text)
+            return true
+        else
+            -- No target or enemy target (?), do nothing
+            return false
+        end
+    end)
+    
+    Utils.hook(HealItem, "getLightBattleText", function(orig, self, user, target)
+        if self.target == "ally" then
+            return "* " .. target.chara:getNameOrYou() .. " "..self:getUseMethod(target.chara).." the " .. self:getUseName() .. "."
+        elseif self.target == "party" then
+            if #Game.battle.party > 1 then
+                return "* Everyone "..self:getUseMethod("other").." the " .. self:getUseName() .. "."
+            else
+                return "* You "..self:getUseMethod("self").." the " .. self:getUseName() .. "."
+            end
+        elseif self.target == "enemy" then
+            return "* " .. target.name .. " "..self:getUseMethod("other").." the " .. self:getUseName() .. "."
+        elseif self.target == "enemies" then
+            return "* The enemies "..self:getUseMethod("other").." the " .. self:getUseName() .. "."
+        end
+    end)
+    
+    Utils.hook(HealItem, "getWorldUseText", function(orig, self, target)
+        if self.target == "ally" then
+            return "* " .. target:getNameOrYou() .. " "..self:getUseMethod(target).." the " .. self:getUseName() .. "."
+        elseif self.target == "party" then
+            if #Game.party > 1 then
+                return "* Everyone "..self:getUseMethod("other").." the " .. self:getUseName() .. "."
+            else
+                return "* You "..self:getUseMethod("self").." the " .. self:getUseName() .. "."
+            end
+        end
+    end)
+    
+    Utils.hook(HealItem, "getLightBattleHealingText", function(orig, self, user, target, amount)
+        local maxed = false
+        if self.target == "ally" then
+            maxed = target.chara:getHealth() >= target.chara:getStat("health") or amount == math.huge
+        elseif self.target == "enemy" then
+            maxed = target.health >= target.max_health or amount == math.huge
+        elseif self.target == "party" and #Game.battle.party == 1 then
+            maxed = target[1].chara:getHealth() >= target[1].chara:getStat("health") or amount == math.huge
+        end
+        local message = ""
+        if self.target == "ally" then
+            if select(2, target.chara:getNameOrYou()) and maxed then
+                message = "* Your HP was maxed out."
+            elseif maxed then
+                message = "* " .. target.chara:getNameOrYou() .. "'s HP was maxed out."
+            else
+                message = "* " .. target.chara:getNameOrYou() .. " recovered " .. amount .. " HP."
+            end
+        elseif self.target == "party" then
+            if #Game.battle.party > 1 then
+                message = "* Everyone recovered " .. amount .. " HP."
+            elseif maxed then
+                message = "* Your HP was maxed out."
+            else
+                message = "* You recovered " .. amount .. " HP."
+            end
+        elseif self.target == "enemy" then
+            if maxed then
+                message = "* " .. target.name .. "'s HP was maxed out."
+            else
+                message = "* " .. target.name .. " recovered " .. amount .. " HP."
+            end
+        elseif self.target == "enemies" then
+            message = "* The enemies recovered " .. amount .. " HP."
+        end
+        return message
+    end)
+    
+    Utils.hook(HealItem, "getLightWorldHealingText", function(orig, self, target, amount)
+        local maxed = false
+
+        if self.target == "ally" or self.target == "party" and #Game.party == 1 then
+            maxed = target:getHealth() >= target:getStat("health") or amount == math.huge
+        end
+
+        local message = ""
+        if self.target == "ally" then
+            if select(2, target:getNameOrYou()) and maxed then
+                message = "* Your HP was maxed out."
+            elseif maxed then
+                message = "* " .. target:getNameOrYou() .. "'s HP was maxed out."
+            else
+                message = "* " .. target:getNameOrYou() .. " recovered " .. amount .. " HP."
+            end
+        elseif self.target == "party" then
+            if #Game.party > 1 then
+                message = "* Everyone recovered " .. amount .. " HP."
+            elseif maxed then
+                message = "* Your HP was maxed out."
+            else
+                message = "* You recovered " .. amount .. " HP."
+            end
+        end
+        return message
+    end)
+    
+    Utils.hook(HealItem, "onBattleUse", function(orig, self, user, target)
+        if Game:isLight() then
+            if self.target == "ally" then
+                -- Heal single party member
+                local amount = self:getBattleHealAmount(target.chara.id)
+                for _,equip in ipairs(user.chara:getEquipment()) do
+                    if equip.getHealBonus then
+                        amount = amount + equip:getHealBonus()
+                    end
+                end
+                target:heal(amount)
+            elseif self.target == "party" then
+                -- Heal all party members
+                for _,battler in ipairs(target) do
+                    local amount = self:getBattleHealAmount(battler.chara.id)
+                    for _,equip in ipairs(user.chara:getEquipment()) do
+                        if equip.getHealBonus then
+                            amount = amount + equip:getHealBonus()
+                        end
+                    end
+                    battler:heal(amount)
+                end
+            elseif self.target == "enemy" then
+                -- Heal single enemy (why)
+                local amount = self:getBattleHealAmount(target.id)
+                for _,equip in ipairs(user.chara:getEquipment()) do
+                    if equip.getHealBonus then
+                        amount = amount + equip:getHealBonus()
+                    end
+                end
+                target:heal(amount)
+            elseif self.target == "enemies" then
+                -- Heal all enemies (why????)
+                for _,enemy in ipairs(target) do
+                    local amount = self:getBattleHealAmount(enemy.id)
+                    for _,equip in ipairs(user.chara:getEquipment()) do
+                        if equip.getHealBonus then
+                            amount = amount + equip:getHealBonus()
+                        end
+                    end
+                    enemy:heal(amount)
+                end
+            else
+                -- No target, do nothing
+            end
+        else
+            orig(self, user, target)
+        end
+    end)
+    
+    Utils.hook(HealItem, "battleUseSound", function(orig, self, user, target)
+        Game.battle.timer:script(function(wait)
+            Assets.stopAndPlaySound("swallow")
+            wait(0.4)
+            Assets.stopAndPlaySound("power")
+        end)
+    end)
+    
+    Utils.hook(HealItem, "worldUseSound", function(orig, self, target)
+        Game.world.timer:script(function(wait)
+            Assets.stopAndPlaySound("swallow")
+            wait(0.4)
+            Assets.stopAndPlaySound("power")
+        end)
     end)
     
     Utils.hook(WorldCutscene, "startLightEncounter", function(orig, self, encounter, transition, enemy, options)
@@ -1618,117 +2374,6 @@ function lib:init()
     Utils.hook(BattleCutscene, "text", function(orig, self, text, portrait, actor, options)
         orig(self, Game.battle.light and ("[shake:"..MagicalGlassLib.light_battle_shake_text.."]" .. text) or text, portrait, actor, options)
     end)
-
-    if not Mod.libs["widescreen"] then
-        Utils.hook(WorldCutscene, "text", function(orig, self, text, portrait, actor, options)
-            local function waitForTextbox(self) return not self.textbox or self.textbox:isDone() end
-            if type(actor) == "table" and not isClass(actor) then
-                options = actor
-                actor = nil
-            end
-            if type(portrait) == "table" then
-                options = portrait
-                portrait = nil
-            end
-        
-            options = options or {}
-        
-            self:closeText()
-        
-            local width, height = 529, 103
-            if Game:isLight() then
-                width, height = 530, 104
-            end
-        
-            self.textbox = Textbox(56, 344, width, height)
-            self.textbox.text.hold_skip = false
-            self.textbox.layer = WORLD_LAYERS["textbox"]
-            Game.world:addChild(self.textbox)
-            self.textbox:setParallax(0, 0)
-        
-            local speaker = self.textbox_speaker
-            if not speaker and isClass(actor) and actor:includes(Character) then
-                speaker = actor.sprite
-            end
-        
-            if options["talk"] ~= false then
-                self.textbox.text.talk_sprite = speaker
-            end
-        
-            actor = actor or self.textbox_actor
-            if isClass(actor) and actor:includes(Character) then
-                actor = actor.actor
-            end
-            if actor then
-                self.textbox:setActor(actor)
-            end
-        
-            if options["top"] == nil and self.textbox_top == nil then
-                local _, player_y = Game.world.player:localToScreenPos()
-                options["top"] = player_y > 260
-            end
-            if options["top"] or (options["top"] == nil and self.textbox_top) then
-            local bx, by = self.textbox:getBorder()
-            self.textbox.y = by + 2
-            end
-        
-            self.textbox.active = true
-            self.textbox.visible = true
-            self.textbox:setFace(portrait, options["x"], options["y"])
-        
-            if options["reactions"] then
-                for id,react in pairs(options["reactions"]) do
-                    self.textbox:addReaction(id, react[1], react[2], react[3], react[4], react[5])
-                end
-            end
-        
-            if options["functions"] then
-                for id,func in pairs(options["functions"]) do
-                    self.textbox:addFunction(id, func)
-                end
-            end
-        
-            if options["font"] then
-                if type(options["font"]) == "table" then
-                    -- {font, size}
-                    self.textbox:setFont(options["font"][1], options["font"][2])
-                else
-                    self.textbox:setFont(options["font"])
-                end
-            end
-        
-            if options["align"] then
-                self.textbox:setAlign(options["align"])
-            end
-        
-            self.textbox:setSkippable(options["skip"] or options["skip"] == nil)
-            self.textbox:setAdvance(options["advance"] or options["advance"] == nil)
-            self.textbox:setAuto(options["auto"])
-        
-            if false then -- future feature
-                self.textbox:setText("[wait:2]"..text, function()
-                    self.textbox:remove()
-                    self:tryResume()
-                end)
-            else
-                self.textbox:setText(text, function()
-                    self.textbox:remove()
-                    self:tryResume()
-                end)
-            end
-        
-            local wait = options["wait"] or options["wait"] == nil
-            if not self.textbox.text.can_advance then
-                wait = options["wait"] -- By default, don't wait if the textbox can't advance
-            end
-        
-            if wait then
-                return self:wait(waitForTextbox)
-            else
-                return waitForTextbox, self.textbox
-            end
-        end)
-    end
     
     Utils.hook(PartyBattler, "calculateDamage", function(orig, self, amount)
         if Game:isLight() then
@@ -1765,23 +2410,25 @@ function lib:init()
     Utils.hook(EnemyBattler, "defeat", function(orig, self, reason, violent)
         orig(self, reason, violent)
         if violent then
+            if Game:isLight() and (self.done_state == "KILLED" or self.done_state == "FROZEN") then
+                MagicalGlassLib.kills = MagicalGlassLib.kills + 1
+            end
             if MagicalGlassLib.random_encounter and MagicalGlassLib:createRandomEncounter(MagicalGlassLib.random_encounter).population then
                 MagicalGlassLib:createRandomEncounter(MagicalGlassLib.random_encounter):addFlag("violent", 1)
             end
+        else
+            Game.battle.xp = Game.battle.xp - self.experience
         end
     end)
 
     Utils.hook(PartyMember, "init", function(orig, self)
         orig(self)
-
+        
         self.short_name = nil
-
-        self.light_can_defend = nil
         
         self.undertale_movement = false
         
-        -- What weapon animation the character will use when attacking without a weapon
-        self.no_weapon_attacking_animation_weapon = "custom/ring"
+        self.light_no_weapon_animation = "custom/ring"
         
         self.lw_stats_bonus = {
             health = 0,
@@ -1834,19 +2481,9 @@ function lib:init()
             end)
         end
     end)
-
-    Utils.hook(PartyMember, "heal", function(orig, self, amount, playsound)
-        if Game:isLight() then
-            if playsound == nil or playsound then
-                Assets.stopAndPlaySound("power")
-            end
-            if self:getHealth() < self:getStat("health") then
-                self:setHealth(math.min(self:getStat("health"), self:getHealth() + amount))
-            end
-            return self:getStat("health") == self:getHealth()
-        else
-            return orig(self, amount, playsound)
-        end
+    
+    Utils.hook(PartyMember, "getLightNoWeaponAnimation", function(orig, self)
+        return self.light_no_weapon_animation
     end)
     
     Utils.hook(PartyMember, "convertToLight", function(orig, self)
@@ -1876,7 +2513,7 @@ function lib:init()
                     if type(result) == "string" then
                         result = Registry.createItem(result)
                     end
-                    if isClass(result) and self:canEquip(result) and self.equipped.weapon and self.equipped.weapon.dark_item and self.equipped.weapon.equip_can_convert ~= false then
+                    if isClass(result) and self:canEquip(result, "weapon", 1) and self.equipped.weapon and self.equipped.weapon.dark_item and self.equipped.weapon.equip_can_convert ~= false then
                         self.equipped.weapon = result
                     end
                 end
@@ -1889,7 +2526,7 @@ function lib:init()
                         if type(result) == "string" then
                             result = Registry.createItem(result)
                         end
-                        if isClass(result) and self:canEquip(result) and (self.equipped.armor[1] and (self.equipped.armor[1].equip_can_convert or self.equipped.armor[1].id == result.id) or not self.equipped.armor[1]) then
+                        if isClass(result) and self:canEquip(result, "armor", 1) and (self.equipped.armor[1] and (self.equipped.armor[1].equip_can_convert or self.equipped.armor[1].id == result.id) or not self.equipped.armor[1]) then
                             if self:getFlag("converted_light_armor") == nil then
                                 if self.equipped.armor[1] and self.equipped.armor[1].id == result.id then
                                     self:setFlag("converted_light_armor", "light/bandage")
@@ -1936,7 +2573,7 @@ function lib:init()
                     if type(result) == "string" then
                         result = Registry.createItem(result)
                     end
-                    if isClass(result) and self:canEquip(result) and self.equipped.weapon and self.equipped.weapon:convertToLightEquip(self) and self.equipped.weapon.equip_can_convert ~= false then
+                    if isClass(result) and self:canEquip(result, "weapon", 1) and self.equipped.weapon and self.equipped.weapon:convertToLightEquip(self) and self.equipped.weapon.equip_can_convert ~= false then
                         self.equipped.weapon = result
                     end
                 end
@@ -1947,24 +2584,33 @@ function lib:init()
                     if type(result) == "string" then
                         result = Registry.createItem(result)
                     end
-                    if isClass(result) and self:canEquip(result) then
-                        if self:getFlag("converted_light_armor") == nil then
-                            self:setFlag("converted_light_armor", "light/bandage")
-                        end
-                        local already_equipped = false
+                    if isClass(result) then
+                        local slot
                         for i = 1, 2 do
-                            if self.equipped.armor[i] and (self.equipped.armor[i].id == result.id or self.equipped.armor[i].equip_can_convert == false) then
-                                already_equipped = true
+                            if self:canEquip(result, "armor", i) then
+                                slot = i
+                                break
                             end
                         end
-                        if not already_equipped then
+                        if slot then
+                            if self:getFlag("converted_light_armor") == nil then
+                                self:setFlag("converted_light_armor", "light/bandage")
+                            end
+                            local already_equipped = false
                             for i = 1, 2 do
-                                if self.equipped.armor[i] then
-                                    Game.inventory:addItem(self.equipped.armor[i].id)
+                                if self.equipped.armor[i] and (self.equipped.armor[i].id == result.id or self.equipped.armor[i].equip_can_convert == false) then
+                                    already_equipped = true
                                 end
                             end
-                            self.equipped.armor[1] = result
-                            self.equipped.armor[2] = nil
+                            if not already_equipped then
+                                for i = 1, 2 do
+                                    if self.equipped.armor[i] then
+                                        Game.inventory:addItem(self.equipped.armor[i].id)
+                                    end
+                                    self.equipped.armor[i] = nil
+                                end
+                                self.equipped.armor[slot] = result
+                            end
                         end
                     end
                 else
@@ -1982,21 +2628,22 @@ function lib:init()
         self:setFlag("light_weapon", last_weapon)
         self:setFlag("light_armor", last_armor)
     end)
-
-    Utils.hook(PartyMember, "getLightEXP", function(orig, self)
-        return self.lw_exp
-    end)
     
     Utils.hook(PartyMember, "getShortName", function(orig, self)
-        return self.short_name or string.sub(self:getName(), 1, 6)
+        return self.short_name or Utils.sub(self:getName(), 1, 6)
     end)
-
-    Utils.hook(PartyMember, "onActionSelect", function(orig, self, battler, undo)
-        if Game.battle.turn_count == 1 and not undo then
-            for _,equip in ipairs(self:getEquipment()) do
-                if equip.onActionSelect() then
-                    equip:onActionSelect(self)
-                end
+    
+    Utils.hook(PartyMember, "getUndertaleMovement", function(orig, self)
+        return self.undertale_movement
+    end)
+    
+    Utils.hook(PartyMember, "onLightActionSelect", function(orig, self, battler, undo) end)
+    Utils.hook(PartyMember, "onLightTurnStart", function(orig, self, battler) end)
+    
+    Utils.hook(PartyMember, "onLightTurnEnd", function(orig, self, battler)
+        for _,equip in ipairs(self:getEquipment()) do
+            if equip.onLightTurnEnd then
+                equip:onLightTurnEnd(battler)
             end
         end
     end)
@@ -2004,7 +2651,7 @@ function lib:init()
     Utils.hook(PartyMember, "onTurnEnd", function(orig, self, battler)
         for _,equip in ipairs(self:getEquipment()) do
             if equip.onTurnEnd then
-                equip:onTurnEnd(self)
+                equip:onTurnEnd(battler)
             end
         end
     end)
@@ -2068,7 +2715,7 @@ function lib:init()
             end
         end
         
-        self:lightLVStats()
+        self.lw_stats = self:lightLVStats()
         for stat,amount in pairs(self.lw_stats_bonus) do
             self.lw_stats[stat] = self.lw_stats[stat] + amount
         end
@@ -2079,7 +2726,7 @@ function lib:init()
     end)
     
     Utils.hook(PartyMember, "lightLVStats", function(orig, self)
-        self.lw_stats = {
+        return {
             health = self:getLightLV() == 20 and 99 or 16 + self:getLightLV() * 4,
             attack = 8 + self:getLightLV() * 2,
             defense = 9 + math.ceil(self:getLightLV() / 4),
@@ -2106,13 +2753,67 @@ function lib:init()
     
     -- Main Color
     Utils.hook(PartyMember, "getColor", function(orig, self)
-        if self.light_color and Game:isLight() then
+        if Kristal.getLibConfig("magical-glass", "light_world_dark_battle_color_override") == true and Game:isLight() and Game.battle and not Game.battle.light then
+            return Utils.unpackColor(MG_PALETTE["light_world_dark_battle_color"])
+        elseif self.light_color and Game:isLight() then
             return Utils.unpackColor(self.light_color)
         else
             return orig(self)
         end
     end)
+    
+    -- Dark Battle Colors
+    Utils.hook(PartyMember, "getAttackBarColor", function(orig, self)
+        if Kristal.getLibConfig("magical-glass", "light_world_dark_battle_color_override") == true and Game:isLight() then
+            return Utils.unpackColor(MG_PALETTE["light_world_dark_battle_color_attackbar"])
+        elseif self.attack_bar_color_lw and Game:isLight() then
+            return Utils.unpackColor(self.attack_bar_color_lw)
+        else
+            return orig(self)
+        end
+    end)
 
+    Utils.hook(PartyMember, "getAttackBoxColor", function(orig, self)
+        if Kristal.getLibConfig("magical-glass", "light_world_dark_battle_color_override") == true and Game:isLight() then
+            return Utils.unpackColor(MG_PALETTE["light_world_dark_battle_color_attackbox"])
+        elseif self.attack_box_color_lw and Game:isLight() then
+            return Utils.unpackColor(self.attack_box_color_lw)
+        else
+            return orig(self)
+        end
+    end)
+    
+    Utils.hook(PartyMember, "getDamageColor", function(orig, self)
+        if Kristal.getLibConfig("magical-glass", "light_world_dark_battle_color_override") == true and Game:isLight() and #Game.battle.party == 1 then
+            return Utils.unpackColor(MG_PALETTE["light_world_dark_battle_color_damage_single"])
+        elseif self.dmg_color_lw and Game:isLight() then
+            return Utils.unpackColor(self.dmg_color_lw)
+        else
+            return orig(self)
+        end
+    end)
+    
+    Utils.hook(PartyMember, "getXActColor", function(orig, self)
+        if self.xact_color_lw and Game:isLight() then
+            return Utils.unpackColor(self.xact_color_lw)
+        else
+            return orig(self)
+        end
+    end)
+    
+    Utils.hook(ActionBox, "init", function(orig, self, x, y, index, battler)
+        orig(self, x, y, index, battler)
+        if Kristal.getLibConfig("magical-glass", "light_world_dark_battle_color_override") and Game:isLight() then
+            self.head_sprite:addFX(ShaderFX("color", {targetColor = MG_PALETTE["light_world_dark_battle_color"]}))
+        end
+    end)
+    
+    Utils.hook(AttackBox, "init", function(orig, self, battler, offset, index, x, y)
+        orig(self, battler, offset, index, x, y)
+        if Kristal.getLibConfig("magical-glass", "light_world_dark_battle_color_override") and Game:isLight() then
+            self.head_sprite:addFX(ShaderFX("color", {targetColor = MG_PALETTE["light_world_dark_battle_color"]}))
+        end
+    end)
 
     -- Light Battle Colors
     Utils.hook(PartyMember, "getLightDamageColor", function(orig, self)
@@ -2120,7 +2821,7 @@ function lib:init()
             return Utils.unpackColor(COLORS.red)
         elseif self.light_dmg_color_dw and not Game:isLight() then
             return Utils.unpackColor(self.light_dmg_color_dw)
-        elseif self.light_dmg_color then
+        elseif self.light_dmg_color and Game:isLight() then
             return Utils.unpackColor(self.light_dmg_color)
         else
             return self:getColor()
@@ -2132,7 +2833,7 @@ function lib:init()
             return Utils.unpackColor(COLORS.silver)
         elseif self.light_miss_color_dw and not Game:isLight() then
             return Utils.unpackColor(self.light_miss_color_dw)
-        elseif self.light_miss_color then
+        elseif self.light_miss_color and Game:isLight() then
             return Utils.unpackColor(self.light_miss_color)
         else
             return self:getColor()
@@ -2144,7 +2845,7 @@ function lib:init()
             return Utils.unpackColor({1, 105/255, 105/255})
         elseif self.light_attack_color_dw and not Game:isLight() then
             return Utils.unpackColor(self.light_attack_color_dw)
-        elseif self.light_attack_color then
+        elseif self.light_attack_color and Game:isLight() then
             return Utils.unpackColor(self.light_attack_color)
         else
             return self:getColor()
@@ -2156,8 +2857,8 @@ function lib:init()
             return Utils.unpackColor(COLORS.white)
         elseif self.light_multibolt_attack_color_dw and not Game:isLight() then
             return Utils.unpackColor(self.light_multibolt_attack_color_dw)
-        elseif self.light_multibolt_attack_color then
-            return self.light_multibolt_attack_color
+        elseif self.light_multibolt_attack_color and Game:isLight() then
+            return Utils.unpackColor(self.light_multibolt_attack_color)
         else
             return self:getColor()
         end
@@ -2168,7 +2869,7 @@ function lib:init()
             return Utils.unpackColor(COLORS.white)
         elseif self.light_attack_bar_color_dw and not Game:isLight() then
             return Utils.unpackColor(self.light_attack_bar_color_dw)
-        elseif self.light_attack_bar_color then
+        elseif self.light_attack_bar_color and Game:isLight() then
             return Utils.unpackColor(self.light_attack_bar_color)
         else
             return self:getColor()
@@ -2178,44 +2879,10 @@ function lib:init()
     Utils.hook(PartyMember, "getLightXActColor", function(orig, self)
         if self.light_xact_color_dw and not Game:isLight() then
             return Utils.unpackColor(self.light_xact_color_dw)
-        elseif self.light_xact_color then
+        elseif self.light_xact_color and Game:isLight() then
             return Utils.unpackColor(self.light_xact_color)
         else
             return self:getXActColor()
-        end
-    end)
-    
-    
-    -- Dark Battle Colors
-    Utils.hook(PartyMember, "getDamageColor", function(orig, self)
-        if self.dmg_color_lw and Game:isLight() then
-            return Utils.unpackColor(self.dmg_color_lw)
-        else
-            return orig(self)
-        end
-    end)
-    
-    Utils.hook(PartyMember, "getAttackBarColor", function(orig, self)
-        if self.attack_bar_color_lw and Game:isLight() then
-            return Utils.unpackColor(self.attack_bar_color_lw)
-        else
-            return orig(self)
-        end
-    end)
-    
-    Utils.hook(PartyMember, "getAttackBoxColor", function(orig, self)
-        if self.attack_box_color_lw and Game:isLight() then
-            return Utils.unpackColor(self.attack_box_color_lw)
-        else
-            return orig(self)
-        end
-    end)
-    
-    Utils.hook(PartyMember, "getXActColor", function(orig, self)
-        if self.xact_color_lw and Game:isLight() then
-            return Utils.unpackColor(self.xact_color_lw)
-        else
-            return orig(self)
         end
     end)
     
@@ -2236,6 +2903,8 @@ function lib:init()
     end)
 
     Utils.hook(LightMenu, "draw", function(orig, self)
+        if TARGET_MOD == "dpr_main" then orig(self) return end
+        
         Object.draw(self)
         
         if self.box and self.box.state == "PARTYSELECT" then
@@ -2259,7 +2928,7 @@ function lib:init()
         love.graphics.print(chara:getName(), 46, 60 + offset)
 
         love.graphics.setFont(self.font_small)
-        love.graphics.print("LV  "..chara:getLightLV(), 46, 100 + offset)
+        love.graphics.print(Kristal.getLibConfig("magical-glass", "light_level_name_short").."  "..chara:getLightLV(), 46, 100 + offset)
         love.graphics.print("HP  "..chara:getHealth().."/"..chara:getStat("health"), 46, 118 + offset)
         if Kristal.getLibConfig("magical-glass", "undertale_menu_display") then
             love.graphics.print(Game:getConfig("lightCurrencyShort"), 46, 136 + offset)
@@ -2284,11 +2953,20 @@ function lib:init()
                 Draw.setColor(PALETTE["world_gray"])
             end
             love.graphics.print("CELL", 84, 188 + (36 * 2))
-            Draw.setColor(PALETTE["world_text"])
-            love.graphics.print("TALK", 84, 188 + (36 * 3))
+            
+            if Mod.libs["light_menu_talk"] then
+                if Kristal.getLibConfig("light_menu_talk", "have_talk_when_alone") or #Game.party > 1 then
+                    Draw.setColor(PALETTE["world_text"])
+                    love.graphics.print("TALK", 84, 188 + (36 * 3))
+                end
+            end
         else
-            Draw.setColor(PALETTE["world_text"])
-            love.graphics.print("TALK", 84, 188 + (36 * 2))
+            if Mod.libs["light_menu_talk"] then
+                if Kristal.getLibConfig("light_menu_talk", "have_talk_when_alone") or #Game.party > 1 then
+                    Draw.setColor(PALETTE["world_text"])
+                    love.graphics.print("TALK", 84, 188 + (36 * 2))
+                end
+            end
         end
 
         if self.state == "MAIN" then
@@ -2301,44 +2979,170 @@ function lib:init()
 
     Utils.hook(LightStatMenu, "init", function(orig, self)
         orig(self)
+        
+        self.state = "STATS"
         self.party_selecting = 1
-
-        self.undertale_stat_display = Kristal.getLibConfig("magical-glass", "undertale_menu_display")
-        self.always_show_magic = Kristal.getLibConfig("magical-glass", "always_show_magic")
+        self.spell_selecting = 1
+        self.option_selecting = 1
+        self.heart_sprite = Assets.getTexture("player/heart_menu")
+        self.arrow_sprite = Assets.getTexture("ui/page_arrow_down")
+        self.font_small = Assets.getFont("small")
+        self.scroll_y = 1
+        
+        if Mod.libs["moreparty"] and #Game.party > 3 then
+            if not Kristal.getLibConfig("moreparty", "classic_mode") then
+                self.party_select_bg = UIBox(-97, 242 + (#Game.party == 4 and 56 or 18), 492, #Game.party == 4 and 52 or 90)
+            else
+                self.party_select_bg = UIBox(-37, 242 + 18, 372, 90)
+            end
+        else
+            self.party_select_bg = UIBox(-37, 242 + 56, 372, 52)
+        end
+        self.party_select_bg.visible = false
+        self.party_select_bg.layer = -1
+        self.party_selecting_spell = 1
+        self:addChild(self.party_select_bg)
     end)
 
     Utils.hook(LightStatMenu, "update", function(orig, self)
-        local chara = Game.party[self.party_selecting]
-
-        local old_selecting = self.party_selecting
+        self.undertale_stat_display = Kristal.getLibConfig("magical-glass", "undertale_menu_display")
+        
+        local show_magic = false
+        for _,party in pairs(Game.party) do
+            if party:hasSpells() then
+                show_magic = true
+            end
+        end
+        self.show_magic = Kristal.getLibConfig("magical-glass", "always_show_magic") or show_magic
+    
+        local old_selecting_party        = self.party_selecting
+        local old_selecting_spell        = self.spell_selecting
+        local old_selecting_option       = self.option_selecting
+        local old_selecting_party_spell  = self.party_selecting_spell
     
         if not OVERLAY_OPEN or TextInput.active then
-            if Input.pressed("right") then
-                self.party_selecting = self.party_selecting + 1
+            if self.state == "PARTYSELECT" then
+                if Input.pressed("right") then
+                    self.party_selecting_spell = self.party_selecting_spell + 1
+                end
+
+                if Input.pressed("left") then
+                    self.party_selecting_spell = self.party_selecting_spell - 1
+                end
+            elseif self.state == "USINGSPELL" then
+                if Input.pressed("right") then
+                    self.option_selecting = self.option_selecting + 1
+                end
+
+                if Input.pressed("left") then
+                    self.option_selecting = self.option_selecting - 1
+                end
+            elseif self.state ~= "SELECTINGSPELL" then
+                if Input.pressed("right") then
+                    self.party_selecting = self.party_selecting + 1
+                end
+
+                if Input.pressed("left") then
+                    self.party_selecting = self.party_selecting - 1
+                end
+            else
+                if Input.pressed("down") then
+                    self.spell_selecting = self.spell_selecting + 1
+                end
+                
+                if Input.pressed("up") then
+                    self.spell_selecting = self.spell_selecting - 1
+                end
             end
-
-            if Input.pressed("left") then
-                self.party_selecting = self.party_selecting - 1
-            end
         end
+        
+        self.party_selecting = Utils.clamp(self.party_selecting, 1, #Game.party)
+        self.spell_selecting = Utils.clamp(self.spell_selecting, 1, #self:getSpells())
+        self.option_selecting = Utils.clamp(self.option_selecting, 1, 2)
+        self.party_selecting_spell = Utils.clamp(self.party_selecting_spell, 1, #Game.party)
 
-        if self.party_selecting > #Game.party then
-            self.party_selecting = 1
-        end
-
-        if self.party_selecting < 1 then
-            self.party_selecting = #Game.party
-        end
-
-        if self.party_selecting ~= old_selecting then
+        if self.party_selecting ~= old_selecting_party or self.spell_selecting ~= old_selecting_spell or self.option_selecting ~= old_selecting_option or old_selecting_party_spell ~= self.party_selecting_spell then
             self.ui_move:stop()
             self.ui_move:play()
+        end
+        
+        if self.spell_selecting ~= old_selecting_spell then
+            local spell_limit = self:getSpellLimit()
+            local min_scroll = math.max(1, self.spell_selecting - (spell_limit - 1))
+            local max_scroll = math.min(math.max(1, #self:getSpells() - (spell_limit - 1)), self.spell_selecting)
+            self.scroll_y = Utils.clamp(self.scroll_y, min_scroll, max_scroll)
+        end
+        
+        local spell = self:getSpells()[self.spell_selecting]
+        if Input.pressed("confirm") and (not OVERLAY_OPEN or TextInput.active) then
+            if self.state == "STATS" and self.show_magic then
+                self.ui_select:stop()
+                self.ui_select:play()
+                
+                if #Game.party > 1 then
+                    self.state = "SPELLS"
+                elseif #self:getSpells() > 0 then
+                    self.scroll_y = 1
+                    self.spell_selecting = 1
+                    self.state = "SELECTINGSPELL"
+                end
+            elseif self.state == "SPELLS" then
+                self.ui_select:stop()
+                self.ui_select:play()
+                
+                self.scroll_y = 1
+                self.spell_selecting = 1
+                if #self:getSpells() > 0 then
+                    self.state = "SELECTINGSPELL"
+                end
+            elseif self.state == "SELECTINGSPELL" then
+                self.ui_select:stop()
+                self.ui_select:play()
+                
+                self.option_selecting = 1
+                self.state = "USINGSPELL"
+            elseif self.state == "USINGSPELL" then
+                if self.option_selecting == 1 and self:canCast(spell) then
+                    if spell.target == "ally" and #Game.party > 1 then
+                        self.ui_select:stop()
+                        self.ui_select:play()
+                    
+                        self.party_select_bg.visible = true
+                        self.party_selecting_spell = 1
+                        self.state = "PARTYSELECT"
+                    else
+                        Game:removeTension(spell:getTPCost())
+                        spell:onLightWorldStart(Game.party[self.party_selecting], spell.target == "ally" and Game.party[1] or spell.target == "party" and Game.party or nil)
+                    end
+                elseif self.option_selecting == 2 then
+                    spell:onCheck()
+                end
+            elseif self.state == "PARTYSELECT" then
+                Game:removeTension(spell:getTPCost())
+                spell:onLightWorldStart(Game.party[self.party_selecting], Game.party[self.party_selecting_spell])
+            end
         end
 
         if Input.pressed("cancel") and (not OVERLAY_OPEN or TextInput.active) then
             self.ui_move:stop()
             self.ui_move:play()
-            Game.world.menu:closeBox()
+            if self.state == "PARTYSELECT" then
+                self.party_select_bg.visible = false
+                self.state = "USINGSPELL"
+            elseif self.state == "USINGSPELL" then
+                self.state = "SELECTINGSPELL"
+            elseif self.state == "SELECTINGSPELL" then
+                self.scroll_y = 1
+                if #Game.party > 1 then
+                    self.state = "SPELLS"
+                else
+                    self.state = "STATS"
+                end
+            elseif self.state == "SPELLS" then
+                self.state = "STATS"
+            elseif self.state == "STATS" then
+                Game.world.menu:closeBox()
+            end
             return
         end
 
@@ -2346,80 +3150,214 @@ function lib:init()
 
     end)
 
+    Utils.hook(LightStatMenu, "getSpells", function(orig, self)
+        local spells = {}
+        local party = Game.party[self.party_selecting]
+        if party:hasAct() then
+            table.insert(spells, Registry.createSpell("_act"))
+        end
+        for _,spell in ipairs(party:getSpells()) do
+            table.insert(spells, spell)
+        end
+        return spells
+    end)
+    
+    Utils.hook(LightStatMenu, "getSpellLimit", function(orig, self)
+        return 6
+    end)
+    
+    Utils.hook(LightStatMenu, "canCast", function(orig, self, spell)
+        if not Game:getConfig("overworldSpells") then return false end
+        if Game:getTension() < spell:getTPCost(Game.party[self.party_selecting]) then return false end
+
+        return (spell:hasWorldUsage(Game.party[self.party_selecting]))
+    end)
+
     Utils.hook(LightStatMenu, "draw", function(orig, self)
         love.graphics.setFont(self.font)
         Draw.setColor(PALETTE["world_text"])
         
-        local chara = Game.party[self.party_selecting]
+        local party = Game.party[self.party_selecting]
         
-        love.graphics.print("\"" .. chara:getName() .. "\"", 4, 8)
-        if chara:getLightStatText() and not chara:getLightPortrait() then
-            love.graphics.print(chara:getLightStatText(), 172, 8)
+        if self.state == "PARTYSELECT" then
+            local function party_box_area()
+                local party_box = self.party_select_bg
+                love.graphics.rectangle("fill", party_box.x - 24, party_box.y - 24, party_box.width + 48, party_box.height + 48)
+            end
+            love.graphics.stencil(party_box_area, "replace", 1)
+            love.graphics.setStencilTest("equal", 0)
         end
         
-        local ox, oy = chara.actor:getPortraitOffset()
-        if chara:getLightPortrait() then
-            Draw.draw(Assets.getTexture(chara:getLightPortrait()), 179 + ox, 7 + oy, 0, 2, 2)
+        love.graphics.print("\"" .. party:getName() .. "\"", 4, 8)
+        if party:getLightStatText() and not party:getLightPortrait() then
+            love.graphics.print(party:getLightStatText(), 172, 8)
+        end
+        
+        local ox, oy = party.actor:getPortraitOffset()
+        if party:getLightPortrait() then
+            Draw.draw(Assets.getTexture(party:getLightPortrait()), 179 + ox, 7 + oy, 0, 2, 2)
         end
 
         if #Game.party > 1 then
-            Draw.setColor(Game:getSoulColor())
-            Draw.draw(self.heart_sprite, 212, 124, 0, 2, 2)
+            if self.state == "STATS" or self.state == "SPELLS" then
+                Draw.setColor(Game:getSoulColor())
+                Draw.draw(self.heart_sprite, 212, 124, 0, 2, 2)
+            end
             
             Draw.setColor(PALETTE["world_text"])
             love.graphics.print("<                >", 162, 116)
         end
 
         Draw.setColor(PALETTE["world_text"])
-
-
-        local exp_needed = math.max(0, chara:getLightEXPNeeded(chara:getLightLV() + 1) - chara:getLightEXP())
-    
-        local at = chara:getBaseStats()["attack"]
-        local df = chara:getBaseStats()["defense"]
-        local mg = chara:getBaseStats()["magic"]
         
-        if self.undertale_stat_display then
-            at = at - 10
-            df = df - 10
-        end
+        love.graphics.print(Kristal.getLibConfig("magical-glass", "light_level_name_short").."  "..party:getLightLV(), 4, 68)
+        love.graphics.print("HP  "..party:getHealth().." / "..party:getStat("health"), 4, 100)
 
-        local offset = 0
-        local show_magic = false
-        for _,party in pairs(Game.party) do
-            if party:getBaseStats()["magic"] > 0 then
-                show_magic = true
+        if self.state == "STATS" then
+            local exp_needed = math.max(0, party:getLightEXPNeeded(party:getLightLV() + 1) - party:getLightEXP())
+        
+            local at = party:getBaseStats()["attack"]
+            local df = party:getBaseStats()["defense"]
+            local mg = party:getBaseStats()["magic"]
+            
+            if self.undertale_stat_display then
+                at = at - 10
+                df = df - 10
             end
-        end
-        if self.always_show_magic or show_magic and self.undertale_stat_display then
-            offset = 16
-            love.graphics.print("MG  ", 4, 228 - offset)
-            love.graphics.print(mg  .. " ("..chara:getEquipmentBonus("magic")   .. ")", 44, 228 - offset) -- alinging the numbers with the rest of the stats
-        end
-        love.graphics.print("LV  "..chara:getLightLV(), 4, 68)
-        love.graphics.print("HP  "..chara:getHealth().." / "..chara:getStat("health"), 4, 100)
-        love.graphics.print("AT  "  .. at  .. " ("..chara:getEquipmentBonus("attack")  .. ")", 4, 164 - offset)
-        love.graphics.print("DF  "  .. df  .. " ("..chara:getEquipmentBonus("defense") .. ")", 4, 196 - offset)
-        love.graphics.print("EXP: " .. chara:getLightEXP(), 172, 164)
-        love.graphics.print("NEXT: ".. exp_needed, 172, 196)
-    
-        local weapon_name = "None"
-        local armor_name = "None"
 
-        if chara:getWeapon() then
-            weapon_name = chara:getWeapon().getEquipDisplayName and chara:getWeapon():getEquipDisplayName() or chara:getWeapon():getName()
-        end
-
-        if chara:getArmor(1) then
-            armor_name = chara:getArmor(1).getEquipDisplayName and chara:getArmor(1):getEquipDisplayName() or chara:getArmor(1):getName()
-        end
+            local offset = 0
+            if self.show_magic then
+                offset = 16
+                love.graphics.print("MG  ", 4, 228 - offset)
+                love.graphics.print(mg  .. " ("..party:getEquipmentBonus("magic")   .. ")", 44, 228 - offset) -- alinging the numbers with the rest of the stats
+            end
+            love.graphics.print("AT  "  .. at  .. " ("..party:getEquipmentBonus("attack")  .. ")", 4, 164 - offset)
+            love.graphics.print("DF  "  .. df  .. " ("..party:getEquipmentBonus("defense") .. ")", 4, 196 - offset)
+            love.graphics.print("EXP: " .. party:getLightEXP(), 172, 164)
+            love.graphics.print("NEXT: ".. exp_needed, 172, 196)
         
-        love.graphics.print("WEAPON: "..weapon_name, 4, 256)
-        love.graphics.print("ARMOR: "..armor_name, 4, 288)
-    
-        love.graphics.print(Game:getConfig("lightCurrency"):upper()..": "..Game.lw_money, 4, 328)
-        if MagicalGlassLib.kills > 20 then
-            love.graphics.print("KILLS: "..MagicalGlassLib.kills, 172, 328)
+            local weapon_name = "None"
+            local armor_name = "None"
+
+            if party:getWeapon() then
+                weapon_name = party:getWeapon():getEquipDisplayName()
+            end
+
+            if party:getArmor(1) then
+                armor_name = party:getArmor(1):getEquipDisplayName()
+            end
+            
+            love.graphics.print("WEAPON: "..weapon_name, 4, 256)
+            love.graphics.print("ARMOR: "..armor_name, 4, 288)
+        
+            love.graphics.print(Game:getConfig("lightCurrency"):upper()..": "..Game.lw_money, 4, 328)
+            if MagicalGlassLib.kills > 20 then
+                love.graphics.print("KILLS: "..MagicalGlassLib.kills, 172, 328)
+            end
+            
+            if self.show_magic then
+                love.graphics.setFont(self.font_small)
+                if Input.usingGamepad() then
+                    Draw.printAlign("PRESS    TO VIEW SPELLS", 150, 368, "center")
+                    Draw.draw(Input.getTexture("confirm"), 100, 366)
+                else
+                    Draw.printAlign("PRESS " .. Input.getText("confirm") .. " TO VIEW SPELLS", 150, 368, "center")
+                end
+            end
+        else
+            local spells = self:getSpells()
+            local spell_limit = self:getSpellLimit()
+            
+            love.graphics.setFont(self.font_small)
+            Draw.setColor(PALETTE["world_gray"])
+            love.graphics.print(Kristal.getLibConfig("magical-glass", "light_battle_tp_name"), 21, 138)
+            
+            love.graphics.setFont(self.font)
+            Draw.setColor(PALETTE["world_text"])
+            for i = self.scroll_y, math.min(#spells, self.scroll_y + (spell_limit - 1)) do
+                local spell = spells[i]
+                local offset = i - self.scroll_y
+                
+                love.graphics.print(tostring(spell:getTPCost(party)).."%", 20, 148 + offset * 32)
+                love.graphics.print(spell:getName(), 90, 148 + offset * 32)
+            end
+            
+            Draw.setColor(Game:getSoulColor())
+            if self.state == "SELECTINGSPELL" then
+                Draw.draw(self.heart_sprite, -4, 156 + 32 * (self.spell_selecting - self.scroll_y), 0, 2, 2)
+            elseif self.state == "USINGSPELL" then
+                if self.option_selecting == 1 then
+                    Draw.draw(self.heart_sprite, -4 + 32, 348, 0, 2, 2)
+                elseif self.option_selecting == 2 then
+                    Draw.draw(self.heart_sprite, 206 - 32, 348, 0, 2, 2)
+                end
+            end
+            
+            -- Draw scroll arrows if needed
+            if #spells > spell_limit then
+                Draw.setColor(1, 1, 1)
+
+                -- Move the arrows up and down only if we're in the spell selection state
+                local sine_off = 0
+                if self.state == "SELECTINGSPELL" then
+                    sine_off = math.sin((Kristal.getTime()*30)/12) * 3
+                end
+
+                if self.scroll_y > 1 then
+                    -- up arrow
+                    Draw.draw(self.arrow_sprite, 294 - 4, (148 + 25 - 3) - sine_off, 0, 1, -1)
+                end
+                if self.scroll_y + spell_limit <= #spells then
+                    -- down arrow
+                    Draw.draw(self.arrow_sprite, 294 - 4, (148 + (32 * spell_limit) - 19) + sine_off)
+                end
+            end
+            
+            -- Draw scrollbar if needed (unless the spell limit is 2, in which case the scrollbar is too small)
+            if self.state == "SELECTINGSPELL" and spell_limit > 2 and #spells > spell_limit then
+                local scrollbar_height = (spell_limit - 2) * 32 + 7
+                Draw.setColor(0.25, 0.25, 0.25)
+                love.graphics.rectangle("fill", 294, 148 + 30, 6, scrollbar_height)
+                local percent = (self.scroll_y - 1) / (#spells - spell_limit)
+                Draw.setColor(1, 1, 1)
+                love.graphics.rectangle("fill", 294, 148 + 30 + math.floor(percent * (scrollbar_height-6)), 6, 6)
+            end
+            
+            if self.state == "PARTYSELECT" then
+                love.graphics.setStencilTest()
+                Draw.setColor(PALETTE["world_text"])
+                
+                local z = Mod.libs["moreparty"] and Kristal.getLibConfig("moreparty", "classic_mode") and 3 or 4
+                
+                Draw.printAlign("Use " .. spells[self.spell_selecting]:getName() .. " on", 150, 231 + (#Game.party > z and 18 or 56), "center")
+
+                for i,party in ipairs(Game.party) do
+                    if i <= z then
+                        love.graphics.print(party:getShortName(), 63 - (math.min(#Game.party,z) - 2) * 70 + (i - 1) * 122, 269 + (#Game.party > z and 18 or 56))
+                    else
+                        love.graphics.print(party:getShortName(), 63 - (math.min(#Game.party - z,z) - 2) * 70 + (i - 1 - z) * 122, 269 + 38 + (#Game.party > z and 18 or 56))
+                    end
+                end
+
+                Draw.setColor(Game:getSoulColor())
+                for i,party in ipairs(Game.party) do
+                    if i == self.party_selecting_spell then
+                        if i <= z then
+                            Draw.draw(self.heart_sprite, 39 - (math.min(#Game.party,z) - 2) * 70 + (i - 1) * 122, 277 + (#Game.party > z and 18 or 56), 0, 2, 2)
+                        else
+                            Draw.draw(self.heart_sprite, 39 - (math.min(#Game.party - z,z) - 2) * 70 + (i - 1 - z) * 122, 277 + 38 + (#Game.party > z and 18 or 56), 0, 2, 2)
+                        end
+                    end
+                end
+            else
+                Draw.setColor(PALETTE["world_text"])
+                if self.state ~= "SPELLS" and not self:canCast(spells[self.spell_selecting]) then
+                    Draw.setColor(PALETTE["world_gray"])
+                end
+                love.graphics.print("USE" , 20 + 32 , 340)
+                Draw.setColor(PALETTE["world_text"])
+                love.graphics.print("INFO", 230 - 32, 340)
+            end
         end
     end)
 
@@ -2455,7 +3393,7 @@ function lib:init()
             self:removeChild(self.soul)
         end
         
-        if Game.party[1].undertale_movement then
+        if Game.party[1]:getUndertaleMovement() then
             self.player = UnderPlayer(chara, x, y)
         else
             self.player = Player(chara, x, y)
@@ -2492,7 +3430,7 @@ function lib:init()
         orig(self, x, y, properties)
         Game.world.timer:after(1/30, function()
             if Game:isLight() then
-                self:setSprite("world/events/savepointut", 1/6)
+                self:setSprite("world/events/lightsavepoint", 1/6)
             end
         end)
     end)
@@ -2537,12 +3475,12 @@ function lib:init()
         local mg        = data.magical_glass     or {}
 
         local name      = data.name              or "EMPTY"
-        local level     = mg.lw_save_lv          or 0
+        local level     = mg.save_level          or 0
         local playtime  = data.playtime          or 0
         local room_name = data.room_name         or "--"
     
         love.graphics.print(name,         self.box.x + 8,        self.box.y - 10 + 8)
-        love.graphics.print("LV "..level, self.box.x + 210 - 42, self.box.y - 10 + 8)
+        love.graphics.print(Kristal.getLibConfig("magical-glass", "light_level_name_short").." "..level, self.box.x + 210 - 42, self.box.y - 10 + 8)
     
         local minutes = math.floor(playtime / 60)
         local seconds = math.floor(playtime % 60)
@@ -2565,9 +3503,49 @@ function lib:init()
     
         Object.draw(self)
     end)
+    
+    Utils.hook(Spell, "init", function(orig, self)
+        orig(self)
+        
+        self.check = "Example info"
+    end)
+    
+    Utils.hook(Spell, "getCheck", function(orig, self)
+        return self.check
+    end)
+    
+    Utils.hook(Spell, "onCheck", function(orig, self)
+        if type(self:getCheck()) == "table" then
+            local text
+            for i, check in ipairs(self:getCheck()) do
+                if i > 1 then
+                    if text == nil then
+                        text = {}
+                    end
+                    table.insert(text, check)
+                end
+            end
+            Game.world:showText({{"* \""..self:getName().."\" - "..(self:getCheck()[1] or "")}, text})
+        else
+            Game.world:showText("* \""..self:getName().."\" - "..self:getCheck())
+        end
+    end)
 
     Utils.hook(Spell, "onLightStart", function(orig, self, user, target)
         lib.heal_amount = nil
+        if Utils.containsValue(self.tags, "damage") then
+            if isClass(target) then
+                if target:includes(LightEnemyBattler) and target.immune_to_damage then
+                    target:onDodge(user, true)
+                end
+            elseif type(target) == "table" then
+                for _,enemy in ipairs(target) do
+                    if enemy:includes(LightEnemyBattler) and enemy.immune_to_damage then
+                        enemy:onDodge(user, true)
+                    end
+                end
+            end
+        end
         local result = self:onLightCast(user, target)
         Game.battle:battleText(self:getLightCastMessage(user, target))
         if result or result == nil then
@@ -2580,7 +3558,49 @@ function lib:init()
     end)
 
     Utils.hook(Spell, "getLightCastMessage", function(orig, self, user, target)
-        return "* "..user.chara:getNameOrYou().." cast "..self:getName().."."..(Utils.containsValue(self.tags, "heal") and "\n"..self:getHealMessage(user, target, lib.heal_amount) or "")
+        return "* "..user.chara:getNameOrYou().." cast "..self:getName().."."..(Utils.containsValue(self.tags, "heal") and self:getHealMessage(user, target, lib.heal_amount) and "\n"..self:getHealMessage(user, target, lib.heal_amount) or "")
+    end)
+    
+    Utils.hook(Spell, "onLightWorldStart", function(orig, self, user, target)
+        lib.heal_amount = nil
+        self:onLightWorldCast(target)
+        Game.world:showText(self:getLightWorldCastMessage(user, target))
+    end)
+    
+    Utils.hook(Spell, "onLightWorldCast", function(orig, self, target)
+        self:onWorldCast(target)
+    end)
+    
+    Utils.hook(Spell, "getLightWorldCastMessage", function(orig, self, user, target)
+        return "* "..user:getNameOrYou().." cast "..self:getName().."."..(Utils.containsValue(self.tags, "heal") and self:getWorldHealMessage(user, target, lib.heal_amount) and "\n"..self:getWorldHealMessage(user, target, lib.heal_amount) or "")
+    end)
+    
+    Utils.hook(Spell, "getWorldHealMessage", function(orig, self, user, target, amount) 
+        local maxed = false
+        if self.target == "ally" then
+            maxed = target:getHealth() >= target:getStat("health") or amount == math.huge
+        elseif self.target == "party" and #Game.party == 1 then
+            maxed = target[1]:getHealth() >= target[1]:getStat("health") or amount == math.huge
+        end
+        local message = ""
+        if self.target == "ally" then
+            if select(2, target:getNameOrYou()) and maxed then
+                message = "* Your HP was maxed out."
+            elseif maxed then
+                message = "* " .. target:getNameOrYou() .. "'s HP was maxed out."
+            else
+                message = "* " .. target:getNameOrYou() .. " recovered " .. amount .. " HP."
+            end
+        elseif self.target == "party" then
+            if #Game.party > 1 then
+                message = "* Everyone recovered " .. amount .. " HP."
+            elseif maxed then
+                message = "* Your HP was maxed out."
+            else
+                message = "* You recovered " .. amount .. " HP."
+            end
+        end
+        return message
     end)
     
     Utils.hook(SnowGraveSpell, "update", function(orig, self)
@@ -2595,6 +3615,7 @@ function lib:init()
                     if enemy then
                         enemy.hit_count = 0
                         enemy:hurt(self.damage + Utils.round(math.random(100)), self.caster)
+                        enemy:flash()
                         if enemy.health <= 0 then
                             enemy.can_die = true
                         end
@@ -2687,6 +3708,8 @@ function lib:init()
             maxed = target.chara:getHealth() >= target.chara:getStat("health") or amount == math.huge
         elseif self.target == "enemy" then
             maxed = target.health >= target.max_health or amount == math.huge
+        elseif self.target == "party" and #Game.battle.party == 1 then
+            maxed = target[1].chara:getHealth() >= target[1].chara:getStat("health") or amount == math.huge
         end
         local message = ""
         if self.target == "ally" then
@@ -2700,6 +3723,8 @@ function lib:init()
         elseif self.target == "party" then
             if #Game.battle.party > 1 then
                 message = "* Everyone recovered " .. amount .. " HP."
+            elseif maxed then
+                message = "* Your HP was maxed out."
             else
                 message = "* You recovered " .. amount .. " HP."
             end
@@ -2713,13 +3738,6 @@ function lib:init()
             message = "* The enemies recovered " .. amount .. " HP."
         end
         return message
-    end)
-
-    Utils.hook(SpeechBubble, "init", function(orig, self, text, x, y, options, speaker)
-        orig(self, text, x, y, options, speaker)
-        if Game.battle and Game.battle.light then
-            self.text.no_sound_overlap = options["no_sound_overlap"] or true
-        end
     end)
 
     Utils.hook(SpeechBubble, "draw", function(orig, self)
@@ -2758,14 +3776,7 @@ function lib:init()
     end)
     
     Utils.hook(ActionBoxDisplay, "draw", function(orig, self) -- Fixes an issue with HP higher than normal
-        local overwrite = false
-        for _,battler in ipairs(Game.battle.party) do
-            if battler.chara:getHealth() > battler.chara:getStat("health") then
-                overwrite = true
-                break
-            end
-        end
-        if overwrite and Game:isLight() and #Game.battle.party <= 3 then
+        if Game:isLight() and #Game.battle.party <= 3 then
             if Game.battle.current_selecting == self.actbox.index then
                 Draw.setColor(self.actbox.battler.chara:getColor())
             else
@@ -2784,13 +3795,17 @@ function lib:init()
             Draw.setColor(PALETTE["action_fill"])
             love.graphics.rectangle("fill", 2, Game:getConfig("oldUIPositions") and 3 or 2, 209, Game:getConfig("oldUIPositions") and 34 or 35)
 
-            Draw.setColor(PALETTE["action_health_bg"])
+            Draw.setColor(Kristal.getLibConfig("magical-glass", "light_world_dark_battle_color_override") and MG_PALETTE["player_health_bg"] or PALETTE["action_health_bg"])
             love.graphics.rectangle("fill", 128, 22 - self.actbox.data_offset, 76, 9)
 
             local health = (self.actbox.battler.chara:getHealth() / self.actbox.battler.chara:getStat("health")) * 76
 
             if health > 0 then
-                Draw.setColor(self.actbox.battler.chara:getColor())
+                if Kristal.getLibConfig("magical-glass", "light_world_dark_battle_color_override") then
+                    Draw.setColor(MG_PALETTE["player_health"])
+                else
+                    Draw.setColor(self.actbox.battler.chara:getColor())
+                end
                 love.graphics.rectangle("fill", 128, 22 - self.actbox.data_offset, math.min(math.ceil(health), 76), 9) -- here
             end
 
@@ -2987,6 +4002,36 @@ function lib:registerDebugOptions(debug)
         end)
     end
     
+    debug:registerMenu("give_item", "Give Item")
+    
+    debug:registerOption("give_item", "Give Dark Item", "Give a dark item.", function()
+        debug:enterMenu("dark_give_item", 0)
+    end)
+    debug:registerOption("give_item", "Give Light Item", "Give a light item.", function()
+        debug:enterMenu("light_give_item", 0)
+    end)
+    debug:registerOption("give_item", "Give Undertale Item", "Give an Undertale item.", function()
+        debug:enterMenu("ut_give_item", 0)
+    end)
+    
+    debug:registerMenu("dark_give_item", "Give Dark Item", "search")
+    debug:registerMenu("light_give_item", "Give Light Item", "search")
+    debug:registerMenu("ut_give_item", "Give Undertale Item", "search")
+    for id, item_data in pairs(Registry.items) do
+        local item = item_data()
+        local menu
+        if Utils.sub(item.id, 1, 10) == "undertale/" then
+            menu = "ut_give_item"
+        elseif item.light then
+            menu = "light_give_item"
+        else
+            menu = "dark_give_item"
+        end
+        debug:registerOption(menu, item.name, item.description, function ()
+            Game.inventory:tryGiveItem(item_data())
+        end)
+    end
+    
     local in_game = function () return Kristal.getState() == Game end
     local in_overworld = function () return in_game() and Game.state == "OVERWORLD" end
     local in_dark_battle = function () return in_game() and Game.state == "BATTLE" and not Game.battle.light end
@@ -3049,8 +4094,19 @@ function lib:registerDebugOptions(debug)
 end
 
 function lib:setupLightShop(shop)
+    local check_shop
+    if type(shop) == "string" then
+        check_shop =  MagicalGlassLib:getLightShop(shop)
+    else
+        check_shop = shop
+    end
+    
+    if check_shop:includes(Shop) then
+        error("Attempted to use Shop in a LightShop. Convert the shop file to a LightShop")
+    end
+    
     if Game.shop then
-        error("Attempt to enter shop while already in shop")
+        error("Attempt to enter light shop while already in shop")
     end
 
     if type(shop) == "string" then
@@ -3058,7 +4114,7 @@ function lib:setupLightShop(shop)
     end
 
     if shop == nil then
-        error("Attempt to enter shop with nil shop")
+        error("Attempt to enter light shop with nil shop")
     end
 
     Game.shop = shop
@@ -3108,9 +4164,6 @@ function lib:setLightBattleSpareColor(value, color_name)
         for name,color in pairs(COLORS) do
             if value == name then
                 lib.spare_color, lib.spare_color_name = color, name:upper()
-                if value == "white" and color_name ~= true then
-                    lib.spare_color_name = lib.spare_color_name .. "?"
-                end
                 break
             end
         end
@@ -3129,8 +4182,15 @@ function lib:setSeriousMode(v)
 end
 
 function lib:onFootstep(char, num)
-    if self.encounters_enabled and self.in_encounter_zone and Game.world.player and char == Game.world.player then
-        self.steps_until_encounter = self.steps_until_encounter - 1
+    if self.encounters_enabled and self.in_encounter_zone and Game.world.player and char:includes(Player) then
+        local amount = 1
+        if Mod.libs["multiplayer"] then
+            local players = #Game.stage:getObjects(Player)
+            if players > 1 then
+                amount = amount / players / 0.8
+            end
+        end
+        self.steps_until_encounter = self.steps_until_encounter - amount
     end
 end
 
@@ -3168,7 +4228,6 @@ function lib:gameNotOver(x, y)
     Game.gameover = GameNotOver(x or 0, y or 0, reload)
     Game.stage:addChild(Game.gameover)
 end
-
 function lib:postUpdate()
     Game.lw_xp = nil
     for _,party in pairs(Game.party_data) do -- Gets the party with the most Light EXP

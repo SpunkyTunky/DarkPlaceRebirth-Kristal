@@ -65,10 +65,11 @@ function item:init()
             dess = "lol",
         },
         brenda = "A ring... for a ring?",
-        noel = "Angel... no thanks...",
+        noel = "Angel...? No...",
         noelle = "It's beautiful...!",
         kangel = "It goes with my outfit!",
 		jamm = "I'm... Already taken...",
+        ceroba = "I'm nowhere close to an angel..."
     }
 end
 
@@ -89,7 +90,7 @@ function item:getReaction(user_id, reactor_id)
             end
         end
     end
-    return super:getReaction(self, user_id, reactor_id)
+    return super.getReaction(self, user_id, reactor_id)
 end
 
 return item

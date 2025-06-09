@@ -13,6 +13,7 @@ if not HOTSWAPPING then
         ["Game"] = require("src.engine.game.game"),
         ["LameFadeout"] = require("src.engine.game.lamefadeout"),
         ["Testing"] = require("src.teststate"),
+        ["Debug"] = require("src.incorrectdebug")
     }
 
     Kristal.Loader = {
@@ -211,6 +212,8 @@ function love.load(args)
 
         Draw.setColor(1, 1, 1, 1)
 
+        if Kristal.callEvent(KRISTAL_EVENT.drawScreen, SCREEN_CANVAS) then return end
+
         if Kristal.bordersEnabled() then
             local border = Kristal.getBorder()
 
@@ -279,8 +282,8 @@ function love.load(args)
 
         local screenshot_size = Utils.lerp(20, 0, SCREENSHOT_DISPLAY)
         if screenshot_size > 0 and not TAKING_SCREENSHOT then
-            local w = love.graphics.getWidth()
-            local h = love.graphics.getHeight()
+            local w = love.graphics.getWidth() / Kristal.getGameScale()
+            local h = love.graphics.getHeight() / Kristal.getGameScale()
             love.graphics.rectangle("fill", 0, 0, screenshot_size, h)
             love.graphics.rectangle("fill", w - screenshot_size, 0, screenshot_size, h)
             love.graphics.rectangle("fill", 0, 0, w, screenshot_size)
@@ -292,6 +295,7 @@ function love.load(args)
     -- start load thread
     Kristal.Loader.in_channel = love.thread.getChannel("load_in")
     Kristal.Loader.out_channel = love.thread.getChannel("load_out")
+    Kristal.Loader.in_channel:push({config = Kristal.Config})
 
     Kristal.Loader.thread = love.thread.newThread("src/engine/loadthread.lua")
     Kristal.Loader.thread:start()
@@ -303,6 +307,13 @@ function love.load(args)
     if HTTPS_AVAILABLE then
         Kristal.HTTPS.thread = love.thread.newThread("src/engine/httpsthread.lua")
         Kristal.HTTPS.thread:start()
+    end
+
+    -- TARGET_MOD being already set -> mod developer has
+    -- a preference for auto mod start. We particularly wouldn't
+    -- want the user to overwrite this since it can break some mods
+    if not TARGET_MOD and Kristal.Args["auto-mod-start"] then
+        AUTO_MOD_START = true
     end
 
     -- TARGET_MOD being already set -> is defined by the mod developer
@@ -544,9 +555,6 @@ function Kristal.onKeyPressed(key, is_repeat)
                     Kristal.returnToMenu()
                 end
             end
-        elseif key == "m" and Input.ctrl() and not console_open then
-            Kristal.reloadnoel()
-            print("reloaded noel_spawn.lua")
         end
     end
 
@@ -588,6 +596,8 @@ end
 ---@param  msg string|table     The error message.
 ---@return function|nil handler The error handler, called every frame instead of the main loop.
 function Kristal.errorHandler(msg)
+    love.graphics.setShader()
+
     local copy_color = { 1, 1, 1, 1 }
     local anim_index = 1
     local starwalker_error = (love.math.random(100) <= 5) -- 5% chance for starwalker
@@ -684,12 +694,19 @@ function Kristal.errorHandler(msg)
 
     Draw.setColor(1, 1, 1, 1)
 
+    local coroutine_crash
     if not trace then
         trace = ""
         if not critical then
             trace = debug.traceback("", 2)
         end
+        if COROUTINE_TRACEBACK then
+            trace = COROUTINE_TRACEBACK .. "\n" .. trace
+            coroutine_crash = true
+        end
     end
+
+    COROUTINE_TRACEBACK = nil
 
     love.graphics.origin()
 
@@ -711,9 +728,16 @@ function Kristal.errorHandler(msg)
         if Utils.tableLength(Mod.libs) > 0 then
             lib_string = "Libraries:"
             for _, lib in Kristal.iterLibraries() do
-                local line = (lib.info.id or "") .. " " .. (lib.info.version or "v?.?.?")
+                -- Very rare edge case where `lib` ends up being `nil`, we'll add an
+                -- "Unknown Library" string here if this ever happens
+                local line
+                if not (lib and lib.info) then
+                    line = "Unknown Library"
+                else
+                    line = (lib.info.id or "") .. " " .. (lib.info.version or "v?.?.?")
+                end
                 lib_string = lib_string .. "\n" .. line
-                w = math.max(w, #line * 7)
+                w = math.max(w, smaller_font:getWidth(line))
                 h = h + 16
             end
         end
@@ -745,11 +769,19 @@ function Kristal.errorHandler(msg)
             ypos = ypos + (32 * #lines)
             love.graphics.setFont(font)
 
+            local shown_coroutine = false
             for l in trace:gmatch("(.-)\n") do
                 if not l:match("boot.lua") then
                     if l:match("stack traceback:") then
                         love.graphics.setFont(font)
-                        love.graphics.printf("Traceback:", pos, ypos, warp)
+                        if coroutine_crash and not shown_coroutine then
+                            love.graphics.printf("Coroutine Traceback:", pos, ypos, warp)
+                            shown_coroutine = true
+                        elseif coroutine_crash then
+                            love.graphics.printf("Main Traceback:", pos, ypos, warp)
+                        else
+                            love.graphics.printf("Traceback:", pos, ypos, warp)
+                        end
                         ypos = ypos + 32
                     else
                         if ypos >= window_height - 40 - 32 then
@@ -849,6 +881,8 @@ function Kristal.errorHandler(msg)
                 else
                     return "reload"
                 end
+            elseif e == "keypressed" and a == "r" and love.keyboard.isDown("lctrl", "rctrl") and love.keyboard.isDown("lalt", "ralt") and love.keyboard.isDown("lshift", "rshift") then
+                return "restart"
             elseif e == "keypressed" and a == "c" and love.keyboard.isDown("lctrl", "rctrl") and not critical then
                 copyToClipboard()
             elseif e == "touchpressed" then
@@ -888,7 +922,7 @@ function Kristal.errorHandler(msg)
         local x, y = love.mouse:getPosition()
 
         show_libraries = false
-        if 20 < x and x < 20 + #mod_string * 7 and 10 < y and y < 26 then
+        if 20 < x and x < 20 + smaller_font:getWidth(mod_string) and 10 < y and y < 26 then
             show_libraries = true
         end
 
@@ -904,6 +938,7 @@ end
 ---| "Menu"    # The main menu state.
 ---| "Game"    # The game state, entered when loading a mod.
 ---| "Testing" # The testing state, used in development.
+---| "Debug"   # Unused
 ---@param ... any Arguments passed to the gamestate.
 function Kristal.setState(state, ...)
     if type(state) == "string" then
@@ -1033,6 +1068,12 @@ function Kristal.returnToMenu()
 	
 	Kristal.loadAssets("", "plugins", "")
 
+    -- Quit the game if the menu is disabled
+    if AUTO_MOD_START and TARGET_MOD then
+        love.event.quit(0)
+        return
+    end
+
     -- Reload mods and return to memu
     Kristal.loadAssets("", "mods", "", function ()
         Kristal.setDesiredWindowTitleAndIcon()
@@ -1148,12 +1189,13 @@ end
 ---@param save_id?   number   The id of the save to load the mod from. (1-3)
 ---@param save_name? string   The name to use for the save file.
 ---@param after?     function The function to call after assets have been loaded.
+---@return boolean   success  Whether the mod was loaded successfully.
 function Kristal.loadMod(id, save_id, save_name, after)
     -- Get the mod data (loaded from mod.json)
     local mod = Kristal.Mods.getAndLoadMod(id)
 
     -- No mod found; nothing to load
-    if not mod then return end
+    if not mod then return false end
 
     -- Create the Mod table, which is a global table that
     -- can contain a mod's custom variables and functions
@@ -1212,6 +1254,8 @@ function Kristal.loadMod(id, save_id, save_name, after)
             Gamestate.switch(Kristal.States["Game"], save_id, save_name)
         end
     end)
+
+    return true
 end
 
 --- Loads assets from a mod and its libraries. Called internally by `Kristal.loadMod`.
@@ -1247,7 +1291,11 @@ function Kristal.loadModAssets(id, asset_type, asset_paths, after)
 
     -- Finally load all assets (libraries first)
     for _, lib_id in ipairs(mod.lib_order) do
-        Kristal.loadAssets(mod.libs[lib_id].path, asset_type or "all", asset_paths or "", finishLoadStep)
+        if not mod.libs[lib_id].preload_assets then
+            Kristal.loadAssets(mod.libs[lib_id].path, asset_type or "all", asset_paths or "", finishLoadStep)
+        else
+            finishLoadStep()
+        end
     end
     Kristal.loadAssets(mod.path, asset_type or "all", asset_paths or "", finishLoadStep)
     for plugin in Kristal.PluginLoader.iterPlugins(true) do
@@ -1362,42 +1410,42 @@ function Kristal.setDesiredWindowTitleAndIcon()
     end
 end
 
+Kristal.funny_titles = {
+    "Deltarune",
+    "Half-Life",
+    "* GOD damnit KRIS where the HELL are WE!?",
+    "* GOD damnit HERO where the HELL are WE!?",
+    "* SO, I have no fucking clue where we are.",
+    "* z...z.....z.....z.......Z.........Z",
+    "Kristale",
+    "* \z
+    WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? \z
+    WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? \z
+    WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT?",
+    "A DESS, a FLIMBO, and a DELF from the SHELF",
+    "* REDDIT GOLD POG!!",
+    "LOOK ITS bAnNAna and MEGALORE!!!",
+    "GREYAREA",
+    "Kristal",
+    "Spamton Sweepstakes",
+    "Includes Darkness!",
+    "It's raining somewhere else...",
+    "Minecraft",
+    "Counter Strike Source Not Found()",
+    "Grian Is Watching You.",
+    "PLAY THE RIBBIT MOD, NOW!!!",
+    "Dark Place: REBIRTH",
+    "Thetaseal",
+    "Undertale Yellow: The Roba Edition",
+    "Power Star",
+    "Doki Doki Literature Club!"
+}
 -- Sets a random title and icon to the game window.
 function Kristal.funnytitle(force_icon)
     if Utils.random() < 0.5 then return end
-    local funnytitles = {
-        "Deltarune",
-        "Half-Life",
-        "* GOD damnit KRIS where the HELL are WE!?",
-        "* GOD damnit HERO where the HELL are WE!?",
-        "* SO, I have no fucking clue where we are.",
-        "* z...z.....z.....z.......Z.........Z",
-        "Kristale",
-        "* \z
-        WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? \z
-        WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? \z
-        WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT? WHAT?",
-        "A DESS, a FLIMBO, and a DELF from the SHELF",
-        "* REDDIT GOLD POG!!",
-        "LOOK ITS bAnNAna and MEGALORE!!!",
-        "GREYAREA",
-        "Kristal",
-        "Spamton Sweepstakes",
-        "Includes Darkness!",
-        "It's raining somewhere else...",
-        "Minecraft",
-        "Counter Strike Source Not Found()",
-        "Grian Is Watching You.",
-        "PLAY THE RIBBIT MOD, NOW!!!",
-        "Dark Place: REBIRTH",
-        "Thetaseal",
-        "Undertale Yellow: The Roba Edition",
-        "Power Star",
-        "Doki Doki Literature Club!"
-    }
-    local funnytitle_rand = love.math.random(#funnytitles)
+    local funnytitle_rand = love.math.random(#Kristal.funny_titles)
     if force_icon then funnytitle_rand = force_icon end
-    local funnytitle = funnytitles[funnytitle_rand] or "Depa Runts"
+    local funnytitle = Kristal.funny_titles[funnytitle_rand] or "Depa Runts"
     local funnyicon = Assets.getTextureData("kristal/icons/icon_"..tostring(funnytitle_rand)) or Kristal.icon
     love.window.setTitle(funnytitle)
     love.window.setIcon(funnyicon)
@@ -1618,7 +1666,22 @@ function Kristal.getSoulColor()
     if Kristal.getState() == Game then
         return Game:getSoulColor()
     end
+
+    local date = os.date("*t")
+    if date.month == 4 and date.day == 1 then
+        return unpack(COLORS.green)
+    end
+
     return unpack(COLORS.red)
+end
+
+--- Returns the soul facing direction which should be used.
+---@return string The facing value.
+function Kristal.getSoulFacing()
+    if Kristal.getState() == Game then
+        return Game:getSoulFacing()
+    end
+    return "up"
 end
 
 --- Called internally. Loads the saved user config, with default values.
@@ -1634,6 +1697,7 @@ function Kristal.loadConfig()
         debug = true,
         fullscreen = false,
         simplifyVFX = false,
+		ardlc = false,
         autoRun = false,
         masterVolume = 0.6,
         favorites = {},
@@ -1646,7 +1710,9 @@ function Kristal.loadConfig()
         defaultName = "",
         skipNameEntry = false,
         verboseLoader = false,
-        ["plugins/enabled_plugins"] = {}
+        ["plugins/enabled_plugins"] = {},
+        dLoad = true,
+        altAttack = false
     }
     if love.filesystem.getInfo("settings.json") then
         Utils.merge(config, JSON.decode(love.filesystem.read("settings.json")))
@@ -1715,9 +1781,16 @@ end
 
 --- Returns whether the specified save folder has any save files.
 ---@return boolean exists Whether the save folder has any save files.
-function Kristal.hasAnySaves()
-    local full_path = "saves"
-    return love.filesystem.getInfo(full_path) and (#love.filesystem.getDirectoryItems(full_path) > 0)
+function Kristal.hasAnySaves(path)
+    local full_path = "saves/" .. (path or Mod.info.id)
+    if love.filesystem.getInfo(full_path) then
+        for _,file in ipairs(love.filesystem.getDirectoryItems(full_path)) do
+            if string.sub(file, 1, 5) == "file_" and string.sub(file, -5) == ".json" then
+                return true
+            end
+        end
+    end
+    return false
 end
 
 --- Saves the given data to a file in the save folder.

@@ -19,12 +19,14 @@ function character:init()
     -- Default title / class (saved to the save file)
     self.title = "Dark Knight\nDoes damage using\ndark energy."
 
+	self.icon_color = {234/255, 121/255, 200/255}
+	
     -- Determines which character the soul comes from (higher number = higher priority)
     self.soul_priority = 1
     -- The color of this character's soul (optional, defaults to red)
     self.soul_color = {1, 1, 1}
-    -- Is this party member a monster? (optional)
-    self.monster = true
+    -- In which direction will this character's soul face (optional, defaults to facing up)
+    self.soul_facing = "down"
 
     -- Whether the party member can act / use spells
     self.has_act = false
@@ -127,13 +129,63 @@ function character:init()
     -- Character flags (saved to the save file)
     self.flags = {
         ["auto_attack"] = false,
+        ["eyes"] = true
     }
+	
+	self.rage = false
+	self.rage_counter = 0
 end
 
 function character:onTurnStart(battler)
-    if self:getFlag("auto_attack", false) then
+	if self:checkWeapon("harvester") and not Game:getFlag("IDLEHEALDOESNTWORK") then
+        self:heal(11)
+    end
+	if self.rage_counter > 0 then
+		self.rage_counter = self.rage_counter - 1
+		if self.rage_counter == 0 then
+			self.rage = false
+			battler:setAnimation("battle/idle")
+		end
+	end
+	if self.rage then	-- TODO: 5% chance to attack a party member instead
+		Game.battle:pushForcedAction(battler, "AUTOATTACK", Game.battle:getActiveEnemies()[love.math.random(#Game.battle:getActiveEnemies())], nil, {points = 450})
+    elseif self:getFlag("auto_attack", false) then
         Game.battle:pushForcedAction(battler, "AUTOATTACK", Game.battle:getActiveEnemies()[1], nil, {points = 150})
     end
+end
+
+function character:getHeadIcon()
+    if self.is_down then
+        return "head_down"
+    elseif self.sleeping then
+        return "sleep"
+    elseif self.defending then
+        return "defend"
+    elseif self.action and self.action.icon then
+        return self.action.icon
+    elseif self.hurting then
+        return "head_hurt"
+    elseif self.rage then
+        return "rage"
+	elseif (self.chara:getHealth() <= (self.chara:getStat("health") / 4)) then
+		return "head_low"
+    else
+        return "head"
+    end
+end
+
+function character:down()
+	self.rage = false
+	self.rage_counter = 0
+    self.is_down = true
+    self.sleeping = false
+    self.hurting = false
+    self:toggleOverlay(true)
+    self.overlay_sprite:setAnimation("battle/defeat")
+    if self.action then
+        Game.battle:removeAction(Game.battle:getPartyIndex(self.chara.id))
+    end
+    Game.battle:checkGameOver()
 end
 
 function character:onAttackHit(enemy, damage)
@@ -157,7 +209,7 @@ end
 function character:getGameOverMessage(main)
     return {
         "Come on,[wait:5]\nthat all you got!?",
-        main.name..",[wait:5]\nget up...!"
+        main:getName()..",[wait:5]\nget up...!"
     }
 end
 
@@ -219,7 +271,7 @@ function character:drawPowerStat(index, x, y, menu)
 end
 
 function character:lightLVStats()
-    self.lw_stats = {
+    return {
         health = self:getLightLV() <= 20 and math.min(25 + self:getLightLV() * 5,99) or 25 + self:getLightLV() * 5,
         attack = 10 + self:getLightLV() * 2 + math.floor(self:getLightLV() / 4),
         defense = 9 + math.ceil(self:getLightLV() / 4),

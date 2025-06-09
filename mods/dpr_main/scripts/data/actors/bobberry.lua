@@ -11,13 +11,13 @@ function actor:init()
     self.height = 64
 
     -- Hitbox for this actor in the overworld (optional, uses width and height by default)
-    self.hitbox = {0, 32, 16, 64}
+    self.hitbox = {0, 48, 32, 16}
 
     -- Color for this actor used in outline areas (optional, defaults to red)
     self.color = {1, 0, 0}
 
     -- Whether this actor flips horizontally (optional, values are "right" or "left", indicating the flip direction)
-    self.flip = nil
+    self.flip = "right"
 
     -- Path to this actor's sprites (defaults to "")
     self.path = "battle/enemies/bobberry"

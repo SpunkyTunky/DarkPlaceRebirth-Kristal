@@ -1,6 +1,6 @@
 local NewYearCountDown, super = Class(Event)
 function NewYearCountDown:init(x, y)
-    super.init(self, x or 80, y or 100, 60*2, 46*2)
+    super.init(self, x or 80, y or 100, {60*2, 46*2})
 
     self.board = Sprite("world/events/new_years_board")
     self.board:play(0.2, true)
@@ -20,14 +20,6 @@ function NewYearCountDown:init(x, y)
 
     --self:setHitbox(0, 0, 60*2, 46*2)
     --self.debug_select = true
-end
-
-function NewYearCountDown:onLoad()
-	super:onLoad(self)
-    local time = os.date("*t")
-	if time.month ~= 12 and time.day ~= 31 then
-        self:remove()
-	end
 end
 
 function NewYearCountDown:update()

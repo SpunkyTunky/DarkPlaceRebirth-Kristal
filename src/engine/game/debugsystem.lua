@@ -372,6 +372,7 @@ function DebugSystem:refresh()
     self.exclusive_menus["BATTLE"] = {"wave_select"}
     self:registerMenu("main", "~ KRISTAL DEBUG ~")
     self.current_menu = "main"
+    self.menu_history = {}
     self:registerDefaults()
     self:registerSubMenus()
     Kristal.callEvent(KRISTAL_EVENT.registerDebugOptions, self)
@@ -417,6 +418,7 @@ function DebugSystem:returnMenu()
     if #self.menu_history == 0 then
         self:closeMenu()
     else
+        self.menu_target_y = self.menu_history[#self.menu_history].target_y
         self:enterMenu(self.menu_history[#self.menu_history].name, self.menu_history[#self.menu_history].soul, true)
         table.remove(self.menu_history, #self.menu_history)
     end
@@ -434,7 +436,8 @@ function DebugSystem:enterMenu(menu, soul, skip_history)
     if not skip_history then
         table.insert(self.menu_history, {
             name = self.current_menu,
-            soul = self.current_selecting
+            soul = self.current_selecting,
+            target_y = self.menu_target_y
         })
     end
     self.current_menu = menu
@@ -772,6 +775,13 @@ function DebugSystem:registerSubMenus()
     for _,border in ipairs(Utils.removeDuplicates(borders)) do
         self:registerOption("border_menu", border, "Switch to the border \"" .. border .. "\".", function() Game:setBorder(border) end)
     end
+	
+	self:registerOption("main", "Party Menu", "Enter the  Party  Menu.", 
+        function () 
+            Game.world:openMenu(DarkCharacterMenu()) 
+            self:closeMenu()
+        end
+    )
 end
 
 function DebugSystem:registerDefaults()
@@ -1174,6 +1184,11 @@ function DebugSystem:onKeyPressed(key, is_repeat)
                 self:setState("MENU")
             end
             return
+        end
+        if key == "pageup" then
+            self.faces_y = self.faces_y + 512
+        elseif key == "pagedown" then
+            self.faces_y = self.faces_y - 512
         end
     elseif self.state == "FLAGS" then
         if not Game.flags then

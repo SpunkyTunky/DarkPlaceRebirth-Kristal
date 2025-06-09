@@ -17,7 +17,11 @@ function Player:init(chara, x, y)
 
     self.force_run = false
     self.force_walk = false
+
     self.run_timer = 0
+    if Game.run_timer_hold then
+        self.run_timer = Game.run_timer_hold
+    end
     self.run_timer_grace = 0
 
     self.auto_moving = false
@@ -33,6 +37,10 @@ function Player:init(chara, x, y)
     self.moving_x = 0
     self.moving_y = 0
     self.walk_speed = Game:isLight() and 6 or 4
+
+    if Game.walk_speed_hold then
+        self.walk_speed = Game.walk_speed_hold
+    end
 
     self.last_move_x = self.x
     self.last_move_y = self.y
@@ -101,7 +109,7 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
 
     uv.x *= iResolution.x / iResolution.y;
 
-    vec3 col = 2.3 * 0.5 + cos(iTime * 8 + 10.0 * fbm(uv * 3.14159) + vec3(0, 23, 21));  // Use a constant for pi
+    vec3 col = 2.3 * 0.5 + cos(iTime * 8.0 + 10.0 * fbm(uv * 3.14159) + vec3(0, 23, 21));  // Use a constant for pi
     col += fbm(uv * 6.0);
 
     return Texel(tex, texture_coords) * vec4(col, 1.0) * color;
@@ -314,6 +322,7 @@ function Player:handleMovement()
             self.run_timer_grace = self.run_timer_grace + DTMULT
         end
     end
+    Game.run_timer_hold = self.run_timer
 end
 
 function Player:updateWalk()
@@ -415,6 +424,18 @@ function Player:updateHistory()
 end
 
 function Player:update()
+
+    -- Holding run with the Pizza Toque equipped (or if the file name is "PEPPINO")
+    -- will cause a gradual increase in speed.
+    if Game:isTauntingAvaliable()
+        and (self.world.map.id ~= "everhall" and self.world.map.id ~= "everhall_entry") then
+        if self.run_timer > 60 then
+            self.walk_speed = self.walk_speed + DT
+        elseif self.walk_speed > 4 then
+            self.walk_speed = 4
+        end
+    end
+
     if self.hurt_timer > 0 then
         self.hurt_timer = Utils.approach(self.hurt_timer, 0, DTMULT)
     end
@@ -456,10 +477,22 @@ function Player:update()
     outlinefx:setAlpha(self.battle_alpha)
 
     super.update(self)
-	
+
+    if Game:isTauntingAvaliable() then
+        if self.last_collided_x or self.last_collided_y then
+            if self.walk_speed >= 10 then
+                self.world.player:shake(4, 0)
+                Assets.playSound("wing")
+            end
+        end
+    end
+
     if self.invincible_colors then
         self:starman()
     end
+
+    Game.walk_speed_hold = self.walk_speed
+
 end
 
 function Player:starman()

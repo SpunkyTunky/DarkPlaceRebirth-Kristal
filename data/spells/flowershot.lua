@@ -8,9 +8,9 @@ function spell:init()
 
     self.effect = "Damage w/\nFLOWERS"
     self.description = "Summons a large flower that shoots smaller\nflowers that explode upon impact."
-	self.check = {"Summons a large\nflower that shoots smaller\nflowers.", "* ...which explode upon impact."}
+	self.check = {"Summons a large\nflower that shoots smaller\nflowers.", "* ...[wait:5] which explode upon impact."}
 
-    self.cost = 80
+    self.cost = 50
 
     self.target = "enemies"
 
@@ -77,10 +77,10 @@ function spell:onLightCast(user, target)
 	local bigflower = Sprite("effects/spells/ceroba/flower_large", 320, 580)
 	bigflower:setOrigin(0.5, 0.5)
 	bigflower:setScale(3, 3)
-	bigflower.layer = BATTLE_LAYERS["above_bullets"] + 1
+	bigflower.layer = LIGHT_BATTLE_LAYERS["above_arena_border"] + 1
 	Game.battle:addChild(bigflower)
 	bigflower:play(1/10)
-	bigflower:slideToSpeed(320, 240, 20, function()
+	bigflower:slideToSpeed(320, 320, 20, function()
 		Game.battle.timer:after(1, function()
 			bigflower:fadeOutAndRemove(0.5)
 		end)
@@ -95,7 +95,7 @@ function spell:onLightCast(user, target)
 			local flower = Sprite("effects/spells/ceroba/flower_large", bigflower.x, bigflower.y)
 			flower:setOrigin(0.5, 0.5)
 			flower:setScale(2, 2)
-			flower.layer = BATTLE_LAYERS["above_bullets"]
+			flower.layer = LIGHT_BATTLE_LAYERS["above_arena_border"]
 			Game.battle:addChild(flower)
 			flower:play(1/10)
 			flower:slideToSpeed(targetX, targetY, 20, function()
@@ -109,7 +109,7 @@ function spell:onLightCast(user, target)
 				local explosion = Sprite("effects/spells/ceroba/explosion", targetX, targetY)
 				explosion:setOrigin(0.5, 0.5)
 				explosion:setScale(2, 2)
-				explosion.layer = BATTLE_LAYERS["above_battlers"]
+				explosion.layer = LIGHT_BATTLE_LAYERS["above_arena_border"] - 1
 				Game.battle:addChild(explosion)
 				explosion:play(1/10, false, function(this)
 					this:remove()

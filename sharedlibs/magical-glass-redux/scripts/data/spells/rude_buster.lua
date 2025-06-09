@@ -1,5 +1,11 @@
 local spell, super = Class("rude_buster", true)
 
+function spell:init()
+    super.init(self)
+    
+    self.check = {"Deals moderate Rude-elemental damage to\none foe.", "* Depends on Attack & Magic."}
+end
+
 function spell:onLightCast(user, target)
     user.delay_turn_end = true
     Game.battle.timer:after(15/30, function()
@@ -14,7 +20,7 @@ function spell:onLightCast(user, target)
             target:hurt(damage, user)
             Game.battle:finishAction()
         end)
-        blast.layer = BATTLE_LAYERS["above_ui"]
+        blast.layer = LIGHT_BATTLE_LAYERS["above_arena_border"]
         Game.battle:addChild(blast)
     end)
     return false
@@ -22,9 +28,9 @@ end
 
 function spell:getDamage(user, target, pressed)
     if Game:isLight() then
-        local damage = math.ceil((user.chara:getStat("magic") * 2) + (user.chara:getStat("attack") * 4) - (target.defense * 1.5))
+        local damage = math.ceil((user.chara:getStat("magic") * 2) + (user.chara:getStat("attack") * 4) - (target.defense * 3))
         if pressed then
-            damage = damage + 10
+            damage = damage + 20
         end
         return damage
     else

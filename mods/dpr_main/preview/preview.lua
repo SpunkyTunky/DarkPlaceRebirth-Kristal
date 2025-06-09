@@ -13,7 +13,7 @@ function preview:init(mod, button, menu)
     self.particles = {}
     self.particle_interval = 0
     self.particle_tex = love.graphics.newImage(p("star.png"))
-    self.particle_interval_dess = Utils.random(1*2.2, 6.9*4*20*3, 0.25)
+    self:resetDessSpawn()
     self.particle_tex_dess = love.graphics.newImage(p("dess.png"))
 
     local date = os.date("*t")
@@ -56,7 +56,12 @@ function preview:update()
         or (Utils.startsWith(MainMenu.state, "plugin"))
     if is_options and self.music_once == 0 then
 
-        self.music_settings = Music("options_starry")
+        local date = os.date("*t")
+        if date.month == 3 and date.day == 10 then
+            self.music_settings = Music("options_retro")
+        else
+            self.music_settings = Music("options_starry")
+        end
 
         self.music_once = 1
 
@@ -100,11 +105,11 @@ function preview:update()
 
     self.particle_interval_dess = Utils.approach(self.particle_interval_dess, 0, DT)
     if self.particle_interval_dess <= 0 then
-        self.particle_interval_dess = Utils.random(1*2.2, 6.9*4*20*3, 0.25)
+        self:resetDessSpawn()
         table.insert(self.particles, {
             type = "dess",
             radius = 12, max_radius = 12,
-            x = Utils.random(SCREEN_WIDTH), y = SCREEN_HEIGHT + 12,
+            x = Utils.random(SCREEN_WIDTH), y = SCREEN_HEIGHT + 40,
             speed = 6 * Utils.random(0.5, 1)
         })
     end
@@ -147,6 +152,8 @@ function preview:update()
         setVideo("piles")
     elseif self:isNameChosen("DECEMBER", false) then
         setVideo("december")
+    elseif self:isNameChosen("JERMA", false) then
+        setVideo("jerma")
     elseif self.naming_video then
         self.naming_video_fade_phase = 1
     end
@@ -334,6 +341,14 @@ end
 
 function preview:require(module, ...)
     return love.filesystem.load(self.base_path .. "/" .. module:gsub("%.", "/") .. ".lua")(...)
+end
+
+function preview:resetDessSpawn()
+    if os.date("*t").month == 12 then
+        self.particle_interval_dess = Utils.random(1*2.2, 6.9, 0.25)
+    else
+        self.particle_interval_dess = Utils.random(1*2.2, 6.9*4*20*3, 0.25)
+    end
 end
 
 return preview

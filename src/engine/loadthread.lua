@@ -6,6 +6,8 @@ json = require("src.lib.json")
 
 verbose = false
 
+kristal_config = {}
+
 --[[if love.filesystem.getInfo("mods/example/_GENERATED_FROM_MOD_TEMPLATE") then
     love.filesystem.mount("mod_template/assets", "mods/example/assets")
     love.filesystem.mount("mod_template/scripts", "mods/example/scripts")
@@ -74,6 +76,7 @@ function resetData()
             music = {},
             videos = {},
             shaders = {},
+            shader_paths = {},
             bubble_settings = {},
         }
     }
@@ -274,7 +277,7 @@ local loaders = {
                 end
                 for lib_id, lib in pairs(all_sharedlibs) do
                     local lib_path = lib.path:sub(#"sharedlibs/")
-                    local enabled = lib.default or false
+                    local enabled = lib.default or lib.preload_assets or false
                     if mod.config and mod.config[lib.id] then
                         enabled = true
                     end
@@ -447,7 +450,8 @@ local loaders = {
     ["shaders"] = { "assets/shaders", function (base_dir, path, full_path)
         local id = checkExtension(path, "glsl")
         if id then
-            data.assets.shaders[id] = full_path
+            -- TODO: load the shader source code, maybe?
+            data.assets.shader_paths[id] = full_path
         end
     end },
     ["videos"] = { "assets/videos", function (base_dir, path, full_path)
@@ -473,6 +477,7 @@ local loaders = {
 
 function loadPath(baseDir, loader, path, pre)
     if path_loaded[loader][path] then return end
+    if kristal_config["borders"] == "off" and loader == "sprites" and path:sub(1,#("borders")) == "borders" then end
 
     if verbose then
         out_channel:push({ status = "loading", loader = loader, path = path })
@@ -521,6 +526,8 @@ while true do
         verbose = true
     elseif msg == "stop" then
         break
+    elseif msg.config then
+        kristal_config = msg.config
     else
         local key = msg.key or 0
         local baseDir = msg.dir or ""
@@ -534,8 +541,10 @@ while true do
             for k, _ in pairs(loaders) do
                 -- dont load mods and plugins when we load with "all"
                 if (k ~= "mods" and k ~= "plugins") then
-                    for _, path in ipairs(paths) do
-                        loadPath(baseDir, k, path)
+                    if (k ~= "sprites" or not kristal_config.lazySprites ) then
+                        for _, path in ipairs(paths) do
+                            loadPath(baseDir, k, path)
+                        end
                     end
                 end
             end

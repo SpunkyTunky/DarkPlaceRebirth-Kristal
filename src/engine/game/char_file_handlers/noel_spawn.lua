@@ -35,8 +35,7 @@ function Noel:test()
 end
 
 function Noel:isDess()
-    local cond = Noel:loadNoel()
-    if Game:isDessMode() and cond and cond.can_be_dess then
+    if ((Game:isDessMode() and Noel:getFlag("can_be_dess")) or Noel:getFlag("identity_crisis")) then
         return true
     else
         return false
@@ -60,7 +59,7 @@ local place_holder = function(cutscene, event)
 
     if not Game.party[2] then
         if party_one == "Dess" then --Oh didn't expect to see you here alone Dess, speaking of, where's the others?
-            if save.met_dess and save.met_dess.met then
+            if Noel:getFlag("met_dess") then
                 cutscene:text("* Oh didn't expect to see you here alone Dess,[wait:5] speaking of,[wait:5] why?", "bruh", "noel")
 
                 if Game:isDessMode() then
@@ -70,7 +69,7 @@ local place_holder = function(cutscene, event)
 
                     cutscene:text("* Ignoring whatever that is,[wait:5] what brings you here?", "bruh", "noel")
 
-                    choicer = cutscene:choicer({"Join the party", "say nothing\nto confuse him"})
+                    local choicer = cutscene:choicer({"Join the party", "say nothing\nto confuse him"})
 
                     if choicer == 1 then
 
@@ -85,7 +84,7 @@ local place_holder = function(cutscene, event)
                         cutscene:text("[instant]* I meant that reality[stopinstant] probably wouldn't allow it.", "bruh", "noel")
 
                         cutscene:text("* Sounds like a skill issue to me, but you do you", "condescending", "dess")
-                        Noel:saveNoel({understand = {dessmode = true}})
+                        Noel:setFlag("understand_dessmode", true)
                     else
                         cutscene:text("*", "smug", "dess")
                         cutscene:text("* [speed:0.1]...", "bruh", "noel")
@@ -107,12 +106,16 @@ local place_holder = function(cutscene, event)
     if #Game.party == 3 then 
         cutscene:text("* Party full.", "bruh", "noel")
     else
-        cutscene:text("* May I join the party?", "bruh", "noel")
+        if math.random(1, 10) == 9 then
+            cutscene:doki_text("* May I join the party?", "noel", {name = "Noel"})
+        else
+            cutscene:text("* May I join the party?", "bruh", "noel")
+        end
         local choicer
         if Game:isDessMode() then
             cutscene:text("* nah this is dess mode[font:main_mono,16]TM[font:reset] so it's only me", "condescending", "dess")
             choicer = 0 --to avoid all choicer dialouge
-            if save.understand and save.understand.dessmode then
+            if Noel:getFlag("understand_dessmode") then
             else
                 if save.met_dess and save.met_dess.met then
                     cutscene:text("* Uhm,[wait:10][face:...] what???", "oh", "noel")
@@ -128,7 +131,7 @@ local place_holder = function(cutscene, event)
             choicer = cutscene:choicer({"Yes", "No"})
         end
         if choicer == 1 then
-            cutscene:text("* Cool beans.", "bruh", "noel")
+            cutscene:text("* Swag Bacon.", "bruh", "noel")
             local noel = cutscene:getCharacter("noel")
             noel:convertToFollower()
             cutscene:attachFollowers()
@@ -146,7 +149,7 @@ local dess_mode = function(cutscene, event)
 
         cutscene:setTextboxTop(true)
 
-        cutscene:text("* Hello again Dess [wait:5]still in dess mo", "bruh", "noel", {auto = true})
+        cutscene:text("* Hello again Dess [wait:5]still in dess mode I see", "bruh", "noel", {auto = true})
 
         cutscene:text("* Join the party. I'm getting sick of waiting in lobby.", "doom_AURGHHHHHH", "dess")
 
@@ -189,18 +192,18 @@ local dess_mode = function(cutscene, event)
 
         Game.world.music:resume()
 
-        Noel:saveNoel({can_be_dess = true})
+        Noel:setFlag("can_be_dess", true)
 
         local noel = cutscene:getCharacter("noel")
         noel.actor:init()
         noel:resetSprite()
 
-        cutscene:text("* Okay[wait:5] this should still count as being a Dess only party I think.", "bruh", "noel")
+        cutscene:text("* Okay[wait:5] this should still count as being a Dess only party I think.", "d_neutral_1", "noel")
 
         cutscene:text("* ...", "mspaint", "dess")
         cutscene:text("* Normally I wouldn't be cool with people copying me,[wait:5] [face:condescending]but in the spirit of this being [face:swag]Dess Mode[face:thisremindsmeofthetimeiwasindarkplace][font:main_mono,16]TM[font:reset] [face:calm_b]I'll allow it.", "angry", "dess")
 
-        cutscene:text("* Okay.", "bruh", "noel")
+        cutscene:text("* Okay.", "d_neutral_2", "noel")
 
         Game.world.music:pause()
         local fan = Music("fanfare", 1, 0.9, false)
@@ -225,7 +228,7 @@ local dess_mode = function(cutscene, event)
         local choicer = cutscene:choicer({"Yes", "No"})
 
         if choicer == 1 then
-            cutscene:text("* Cool beans.", "bruh", "noel")
+            cutscene:text("* Swag Bacon.", "d_neutral_2", "noel")
             local noel = cutscene:getCharacter("noel")
             noel:convertToFollower()
             cutscene:attachFollowers()
@@ -233,7 +236,7 @@ local dess_mode = function(cutscene, event)
             Game:addPartyMember("noel")
             Game:getPartyMember("noel"):setActor("noel")
         elseif choicer == 2 then
-            cutscene:text("* Alright.", "bruh", "noel")
+            cutscene:text("* Oll'Korrect.", "d_neutral_1", "noel")
         end
     end
 end
@@ -291,7 +294,7 @@ function Noel:spawnNoel(x, y, data)
     if Game:hasPartyMember("noel") then
         Noel:checkNoel()
     else
-        if Game:isDessMode() and save.understand and save.understand.dessmode then
+        if Game:isDessMode() and Noel:getFlag("understand_dessmode") then
             
             Game.world:spawnNPC("noel", x, y, {cutscene = dess_mode})   
         elseif data then
@@ -360,30 +363,75 @@ function Noel:noels_annoyance(cutscene)
     end
 end
 
+function Noel:getFlag(flag, default)
+    local data
 
---Didnt think it was good enough 
---[[
-        Game.world:startCutscene(function (cutscene, event)
-            Game.world.music:fade(0, 0.25)
+    -- Check if the save file exists
+    if love.filesystem.getInfo("saves/null.char") then
+        data = JSON.decode(love.filesystem.read("saves/null.char"))
+    else
+        return default
+    end
 
-            local turncoat = Music("turncoat", 1, 1)
+    -- Ensure the flags table exists
+    local flags = data.flags or {}
 
-            local index = love.window.showMessageBox("???", "* Don't panic!", {"    "}, "warning")
-            local index = love.window.showMessageBox("???", "* The game didn't crash!", {"    "}, "info")
+    -- Return the flag value or default if not found
+    return flags[flag] ~= nil and flags[flag] or default
+end
 
-            local index = love.window.showMessageBox("???", "* This is a prewritten message...", {"    "}, "warning")
+function Noel:setFlag(flag_name, value)
+    local data
 
-            local index = love.window.showMessageBox("???", "* If youre reading this.", {"    "}, "warning")
-            local index = love.window.showMessageBox("???", "* I'm probably not awake yet.", {"    "}, "warning")
-            local index = love.window.showMessageBox("???", "* And won't be for a while.", {"    "}, "warning")
-            local index = love.window.showMessageBox("???", "* ...", {"    "}, "warning")
-            local index = love.window.showMessageBox("???", "* What are you waiting for!!!", {"    "}, "warning")
-            local index = love.window.showMessageBox("???", "* Wake me up already "..Game.save_name.."!!!", {"    "}, "warning")
+    -- Check if the save file exists
+    if love.filesystem.getInfo("saves/null.char") then
+        data = JSON.decode(love.filesystem.read("saves/null.char"))
+    else
+        data = {}
+    end
 
-            turncoat:stop()
-            Game.world.music:fade(1, 0.5)
-            --cutscene:text("* The wall seems cracked.", "bruh", "noel")
-        end)
-]]
+    -- Ensure the flags table exists
+    data.flags = data.flags or {}
+
+    -- Set the flag value
+    data.flags[flag_name] = value
+
+    -- Write back to the file
+    love.filesystem.write("saves/null.char", JSON.encode(data))
+end
+
+function Noel:remove()
+end
+
+function Noel:delete()
+end
+
+function Noel:erase()
+end
+
+function Noel:kill()
+end
+
+function Noel:die()
+end
+
+function Noel:uninstall()
+end
+
+function Noel:getDebugOptions(context, thing)
+
+    local my_self = thing
+    local context = context
+
+    if my_self.visible then
+        context:addMenuItem("Delete", "Delete this object", function() my_self.visible = false end)
+    else
+        context:addMenuItem("Show", "Show this object.", function() my_self.visible = true end)
+    end
+    context:addMenuItem("Explode", "'cuz it's funny", function()
+        print("no")
+    end)
+    return context
+end
 
 return Noel

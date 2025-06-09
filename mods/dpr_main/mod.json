@@ -54,7 +54,10 @@
 		// Agent 7? ~~(Would her Dess% speedrun be invalid just for this change)~~
 		"LUCY": "[style:GONER][spacing:3.2]HEY, THAT'S ME!",
 		"JAMM": "[style:GONER][spacing:3.2]AS IN THAT ASSHAT WHO\nMADE 16 BITS OF CANNED\nSPAM?",
-		"NELLE":"[style:GONER][spacing:3.2]FOR SOME WEIRD REASON...\nTHIS NAME SHINES WITH\nYELLOW POWER.",
+		// I'm surprised it fits (even if barely)
+		"NELLEMONELLE":"[style:GONER][spacing:3.2]HI THE DEV OF DLC YELLOW\nIS HERE.",
+		"NELLE":"[style:GONER][spacing:3.2]YOU FEEL LIKE THIS NAME\nWAS REJECTED BY\nSOMEONE...",
+		"NELL":"[style:GONER][spacing:3.2]LET THE POWER OF DARK\nMAGIC ASSIST YOU.",
 	
 		// Misc. jokes
 		"GHASTTEAR": "[style:GONER][spacing:3.2]HOLY SHIT!!!!!\nGHAST TEAR REAL!!!!!!!!!!",
@@ -64,6 +67,10 @@
 		"GARFZONE": "[style:GONER][spacing:3.2]GEE...SOME PEOPLE ENJOY\nA LITTLE MUSIC IN THE\nMORNING...",
 		"SWALLOW": "[style:GONER][spacing:3.2]WHAT DO YOU MEAN?\nAFRICAN OR EUROPEAN?",
 		"A": "[spacing:3.2]Oh wow, reeaaal\ncreative there,\nbucko...",
+		"BABA": "[spacing:3.2]IS YOU",
+		"PIZZAROLD": "[spacing:3.2]WELCOME BACK\n\n\n       :D",
+		"GRU": "[spacing:3.2]Is that the MINIONS guy?",
+		"DRU": "[spacing:3.2]Is that the MINIONS guy's brother or something?",
 		// Extra visual bit is handled by preview.lua
 		"SWELLOW": "[style:GONER][spacing:3.2]AWW THE SCRUNKLY.\nTHE GOOBER. A\nSWELL FELLOW. A\nLITTLE FELLA.",
 		"PAUL": "[style:none][spacing:0]KAAAAAAAAA!\nPaul is the favorite\nof all!",
@@ -71,6 +78,8 @@
 		"RICK": "[style:GONER][spacing:3.2]GET RICKROLLED, \nCHUCKLENUTS.",
 		"ASRIEL": "", //No message cause it covers up the text in the video lol.
 		"DECEMBER": "[style:none][spacing:0]OH MY GOD! DECEMBER! DECEMBER! DECEMBER! DECEM",
+		"YES": "[style:GONER][spacing:3.2]NO",
+		"NO": "[style:GONER][spacing:3.2]YES",
 	
 		// Challenges
 		// FIXME: Should we use the GONER style on these lower-case messages?
@@ -92,6 +101,7 @@
 		"SPAMTON",
 		"MORSHU",
 		"NOEL",
+		"YES",
 		"CEROBA"
 	],
 	// Names that crash the game.
@@ -140,6 +150,9 @@
     // Whether the mod is hidden from the mod selection.
     "hidden": false,
 
+    // Make the file selection screen show even when there aren't any existing saves.
+    "useSaves": true,
+
     // Whether the game window's title should be set to the mod's name, and the icon to the image
     // in the file `window_icon.png`.
     // When your mod is configured as the engine's target mod, it's automatically done unless if
@@ -149,6 +162,7 @@
     // Config values for the engine and any libraries you may have.
     // These config values can control chapter-specific features as well.
     "config": {
+			"seqwaves": {},
 			"kristal": {
 				"growStronger": false
 			}

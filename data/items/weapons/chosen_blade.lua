@@ -46,17 +46,21 @@ function item:init()
     self.can_equip = {
         kris = true,
         hero = true,
+        suzy = true,
     }
 
     -- Character reactions
     self.reactions = {
         susie = "Me? Some sorta chosen one? Nah.",
+        suzy = "Chosen One? Heck Yeah!",
         ralsei = "Um, I don't think this is mine.",
         noelle = "It feels... magical?",
         hero = "Back where it belongs.",
         dess = "little ol' me a hero? surely you're jestin",
         brenda = "Swords aren't really my style.",
-        jamm = "What do I look like, the main character?"
+        jamm = "What do I look like, the main character?",
+        ceroba = "There's no way I can wield THAT.",
+        noel = "Overhyped, Underused, yet VERY Interesting...",
     }
 end
 

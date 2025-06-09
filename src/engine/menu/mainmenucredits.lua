@@ -50,15 +50,15 @@ function MainMenuCredits:init(menu)
             "Kristal Engine",
             {
                 {"GitHub Contributors", COLORS.silver},
+                "J.A.R.U.",
+                "MCdeDaxia",
                 "MrOinky",
                 "prokube",
                 "Simbel",
                 "sjl057",
                 "skarph",
-                "WIL-TZY",
                 "TFLTV",
-                "J.A.R.U.",
-                "MCdeDaxia",
+                "WIL-TZY",
                 ""
             },
             {
@@ -127,9 +127,22 @@ function MainMenuCredits:init(menu)
                 "Tick358",
                 "ArleePuncher",
                 "Tkcool",
+                "Diamond Deltahedron",
+                "Science2048",
+            },
+            {
+                {"Contributors", COLORS.silver},
+                "TritraSerpifeu",
                 "",
                 "",
-            }
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+            },
         }
     }
     self.selected_page = 1

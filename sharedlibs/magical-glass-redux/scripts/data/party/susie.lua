@@ -18,18 +18,22 @@ function character:init()
     -- Default light world equipment item IDs (saves current equipment)
     self.lw_weapon_default = "custom/hairbrush"
     self.lw_armor_default = "light/bandage"
-    
-    -- What weapon animation the character will use when attacking without a weapon
-    self.no_weapon_attacking_animation_weapon = "custom/tough_glove_ex"
 end
 
 function character:lightLVStats()
-    self.lw_stats = {
+    return {
         health = self:getLightLV() <= 20 and math.min(25 + self:getLightLV() * 5,99) or 25 + self:getLightLV() * 5,
         attack = 10 + self:getLightLV() * 2 + math.floor(self:getLightLV() / 4),
         defense = 9 + math.ceil(self:getLightLV() / 4),
         magic = math.ceil(self:getLightLV() / 4)
     }
+end
+
+function character:onLightTurnStart(battler)
+    super.onLightTurnStart(self, battler)
+    if self:getFlag("auto_attack", false) then
+        Game.battle:pushForcedAction(battler, "AUTOATTACK", Game.battle:getActiveEnemies()[1], nil, {points = 150})
+    end
 end
 
 return character

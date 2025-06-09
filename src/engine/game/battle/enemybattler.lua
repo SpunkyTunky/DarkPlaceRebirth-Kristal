@@ -300,6 +300,20 @@ function EnemyBattler:removeAct(name)
     end
 end
 
+function EnemyBattler:registerMarcyAct(name, description, party, tp, highlight, icons)
+	if Game:getFlag("marcy_joined") then
+		self:registerShortActFor("jamm", name, description, party, tp, highlight, icons)
+		self.acts[#self.acts].color = {0, 1, 1}
+	end
+end
+
+function EnemyBattler:registerShortMarcyAct(name, description, party, tp, highlight, icons)
+	if Game:getFlag("marcy_joined") then
+		self:registerActFor("jamm", name, description, party, tp, highlight, icons)
+		self.acts[#self.acts].color = {0, 1, 1}
+	end
+end
+
 --- Non-violently defeats the enemy and removes them from battle (if [`exit_on_defeat`](lua://EnemyBattler.exit_on_defeat) is `true`)
 ---@param pacify?   boolean Whether the enemy was defeated by pacifying them rather than sparing them (defaults to `false`)
 function EnemyBattler:spare(pacify)
@@ -433,7 +447,7 @@ function EnemyBattler:addMercy(amount)
 end
 
 --- *(Override)* Called when a battler uses mercy on (spares) the enemy \
---- By default, responsible for sparing the enemy or increasing their mercy points by [`spare_points`](lua://EnemyBattler.spare_points)
+--- *By default, responsible for sparing the enemy or increasing their mercy points by [`spare_points`](lua://EnemyBattler.spare_points)*
 ---@param battler PartyBattler
 ---@return boolean success  Whether the mercy resulted in a spare
 function EnemyBattler:onMercy(battler, spare_all)
@@ -462,7 +476,7 @@ function EnemyBattler:onMercy(battler, spare_all)
 end
 
 --- Creates the particular flash effect used when a party member uses mercy on the enemy, but the spare fails
----@param color table The color the enemy should flash (defaults to yellow)
+---@param color? table The color the enemy should flash (defaults to yellow)
 function EnemyBattler:mercyFlash(color)
     color = color or {1, 1, 0}
 
@@ -544,8 +558,9 @@ function EnemyBattler:getNextWaves()
     return self.waves
 end
 
---- Selects the enemy's next wave out of the available selection (provided by [`EnemyBattler:getNextWaves()`](lua://EnemyBattler.getNextWaves))
----@return string wave_id
+--- *(Override)* Selects the wave that this enemy will use each turn.
+--- *By default, picks from the available selection provided by [`EnemyBattler:getNextWaves()`](lua://EnemyBattler.getNextWaves)*
+---@return string? wave_id
 function EnemyBattler:selectWave()
     local waves = self:getNextWaves()
     if waves and #waves > 0 then
@@ -907,6 +922,25 @@ function EnemyBattler:defeat(reason, violent)
             end
             self:setRecruitStatus(false)
         end
+        if self.done_state == "KILLED" or self.done_state == "FROZEN" then
+            Game.battle.killed = true
+            for i, battler in ipairs(Game.battle.party) do
+                battler.chara.kills = battler.chara.kills + 1
+                if battler.chara.name == "Noel" then
+                    local newData = {
+                        Kills = battler.chara.kills
+                    }    
+                    Noel:saveNoel(newData)
+                end
+            end
+            if self.done_state == "FROZEN" then
+                Game.battle.freeze_xp = Game.battle.freeze_xp + self.experience
+            else
+                Game.battle.xp = Game.battle.xp + self.experience
+            end
+        end
+    elseif MagicalGlassLib then -- Compactability with Magical-Glass: Redux
+        Game.battle.xp = Game.battle.xp + self.experience -- MGR reduces EXP gain from not killing, so basically, this just makes sure that the enemy adds 0 EXP
     end
     
     if self:isRecruitable() and type(self:getRecruitStatus()) == "number" and (self.done_state == "PACIFIED" or self.done_state == "SPARED") then
@@ -923,18 +957,6 @@ function EnemyBattler:defeat(reason, violent)
     end
     
     Game.battle.money = Game.battle.money + self.money
-
-    if self.done_state == "KILLED" or self.done_state == "FROZEN" then
-        Game.battle.killed = true
-        for i, party in ipairs(Game.party) do
-            party.kills = party.kills + 1
-        end
-        if self.done_state == "FROZEN" then
-            Game.battle.freeze_xp = Game.battle.freeze_xp + self.experience
-        else
-            Game.battle.xp = Game.battle.xp + self.experience
-        end
-    end
 
     Game.battle:removeEnemy(self, true)
 end

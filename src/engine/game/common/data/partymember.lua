@@ -16,6 +16,7 @@
 ---
 ---@field soul_priority integer
 ---@field soul_color    table
+---@field soul_facing   string
 ---
 ---@field has_act       boolean
 ---@field has_spells    boolean
@@ -95,6 +96,8 @@ function PartyMember:init()
     self.soul_priority = 2
     -- The color of this character's soul (optional, defaults to red)
     self.soul_color = {1, 0, 0}
+    -- In which direction will this character's soul face (optional, defaults to facing up)
+    self.soul_facing = "up"
 
     -- Whether the party member can act (defaults to true)
     self.has_act = true
@@ -122,6 +125,15 @@ function PartyMember:init()
         magic = 0,
         health_def = 100 -- placeholder for true MHP, do not use
     }
+
+	-- Arc Completion Bonus Stats
+	self.arcBonusStats = {
+		health = 0,
+		attack = 0,
+		defense = 0,
+		magic = 0,
+	}
+
     -- Max stats from level-ups
     self.max_stats = {}
     
@@ -268,6 +280,9 @@ function PartyMember:init()
 
     -- whether or not the next attack should be reflected
 	self.reflectNext = false
+	
+	-- did this character graduate high school?
+	self.graduate = false
 end
 
 -- Callbacks
@@ -290,6 +305,10 @@ function PartyMember:onTurnStart(battler)
         battler:heal(turnHealing)
     end
 end
+
+--- *(Override)* Called upon completion of this character's arc
+function PartyMember:onArc() end
+
 --- *(Override)* Called whenever this party member's action select turn starts
 ---@param battler PartyBattler The party member's associated battler
 ---@param undo    boolean      Whether their previous action was just undone
@@ -362,6 +381,7 @@ function PartyMember:getLightEXPNeeded(lv) return self.lw_exp_needed[lv] or 0 en
 
 function PartyMember:getSoulPriority() return self.soul_priority end
 function PartyMember:getSoulColor() return Utils.unpackColor(self.soul_color or {1, 0, 0}) end
+function PartyMember:getSoulFacing() return self.soul_facing end
 
 function PartyMember:hasAct() return self.has_act end
 function PartyMember:hasSpells() return self.has_spells end
@@ -375,6 +395,7 @@ function PartyMember:getHealth() return Game:isLight() and self.lw_health or sel
 function PartyMember:getSavedMHP() return self.saved_mhp end
 
 function PartyMember:getStarmanTheme() return "default" end
+
 ---@param light? boolean
 function PartyMember:getBaseStats(light)
     if light or (light == nil and Game:isLight()) then
@@ -857,10 +878,10 @@ function PartyMember:convertToLight()
     end
 
     if not self.equipped.weapon then
-        self.equipped.weapon = Registry.createItem(self.lw_weapon_default)
+        self.equipped.weapon = Registry.createItem(self.lw_weapon_default or "light/_nothing_weapon")
     end
     if not self.equipped.armor[1] then
-        self.equipped.armor[1] = Registry.createItem(self.lw_armor_default)
+        self.equipped.armor[1] = Registry.createItem(self.lw_armor_default or "light/_nothing_armor")
     end
 
     self.equipped.weapon.dark_item = last_weapon
@@ -983,7 +1004,11 @@ end
 function PartyMember:loadSpells(data)
     self.spells = {}
     for _,v in ipairs(data) do
-        self:addSpell(v)
+        if Registry.getSpell(v) then
+            self:addSpell(v)
+        else
+            Kristal.Console:error("Could not load spell \"".. (v or "nil") .."\"")
+        end
     end
 end
 
@@ -1505,6 +1530,19 @@ function PartyMember:addOpinion(other_party, amount)
     end
     self.opinions[other_party] = self:getOpinion(other_party) + amount
     return self.opinions[other_party]
+end
+
+-- Completes a character's Arc
+-- this is kind of lazy tbh but like sue me
+--   -char
+function PartyMember:completeArc()
+	self:setFlag("arc", true)
+	for i,v in pairs(self.stats) do
+		if self.arcBonusStats and self.arcBonusStats[i] then
+			self:increaseStat(i, self.arcBonusStats[i])
+		end
+	end
+	self:onArc()
 end
 
 return PartyMember

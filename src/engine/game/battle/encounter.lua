@@ -176,7 +176,7 @@ function Encounter:addEnemy(enemy, x, y, ...)
         enemy_obj = enemy
     end
     local enemies = self.queued_enemy_spawns
-    local enemies_index = enemies
+    local enemies_index
     local transition = false
     if Game.battle and Game.state == "BATTLE" then
         enemies = Game.battle.enemies
@@ -210,7 +210,9 @@ function Encounter:addEnemy(enemy, x, y, ...)
     end
     enemy_obj.encounter = self
     table.insert(enemies, enemy_obj)
-    table.insert(enemies_index, enemy_obj)
+    if enemies_index then
+        table.insert(enemies_index, enemy_obj)
+    end
     if Game.battle and Game.state == "BATTLE" then
         Game.battle:addChild(enemy_obj)
     end
@@ -218,7 +220,7 @@ function Encounter:addEnemy(enemy, x, y, ...)
 end
 
 --- *(Override)* Called to receive the encounter text to be displayed each turn. (Not called on turn one, [`text`](lua://Encounter.text) is used instead.) \
---- By default, gets an encounter text from a random enemy, falling back on the encounter's [encounter `text`](lua://Encounter.text) if none have encounter text.
+--- *By default, gets an encounter text from a random enemy, falling back on the encounter's [encounter `text`](lua://Encounter.text) if none have encounter text.*
 ---@return string
 function Encounter:getEncounterText()
     local enemies = Game.battle:getActiveEnemies()
@@ -237,7 +239,7 @@ function Encounter:getEncounterText()
 end
 
 --- *(Override)* Retrieves the waves to be used for the next defending phase. \
---- By default, iterates through all active enemies and selects one wave each using [`EnemyBattler:selectWave()`](lua://EnemyBattler.selectWave)
+--- *By default, iterates through all active enemies and selects one wave each using [`EnemyBattler:selectWave()`](lua://EnemyBattler.selectWave)*
 ---@return Wave[]
 function Encounter:getNextWaves()
     local waves = {}
@@ -286,6 +288,9 @@ function Encounter:getSoulColor()
     return Game:getSoulColor()
 end
 
+---@return string
+function Encounter:getSoulFacing() end
+
 --- *(Override)* Gets the position that the soul will appear at when starting waves.
 ---@return integer x
 ---@return integer y
@@ -317,7 +322,7 @@ function Encounter:onWavesDone()
 end
 
 --- *(Override)* Creates the soul being used this battle (Called at the start of the first wave)
---- By default, returns the regular (red) soul.
+--- *By default, returns the regular (red) soul.*
 ---@param x         number  The x-coordinate the soul should spawn at.
 ---@param y         number  The y-coordinate the soul should spawn at.
 ---@param color?    table   A custom color for the soul, that should override its default.

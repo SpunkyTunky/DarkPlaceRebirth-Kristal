@@ -352,6 +352,33 @@ function Utils.hook(target, name, hook, exact_func)
     end
 end
 
+---@type metatable
+Utils.HOOKSCRIPT_MT = {
+    __newindex = function (self, k, v)
+        self.__hookscript_super[k] = self.__hookscript_super[k] or self.__hookscript_class[k]
+        assert(Mod)
+        Utils.hook(self.__hookscript_class, k, v, true)
+    end
+}
+---@generic T : Class|function
+---
+---@param include? T|`T`|string     # The class to extend from. If passed as a string, will be looked up from the current registry (e.g. `scripts/data/actors` if creating an actor) or the global namespace.
+---
+---@return T class                # The new class, extended from `include` if provided.
+---@return T|superclass<T> super  # Allows calling methods from the base class. `self` must be passed as the first argument to each method.
+function Utils.hookScript(include)
+    if type(include) == "string" then
+        local r = CLASS_NAME_GETTER(include)
+        if not r then
+            error{included=include, msg="Failed to include "..include}
+        end
+        include = r
+    end
+    local super = {}
+    local class = setmetatable({__hookscript_super = super, __hookscript_class = include}, Utils.HOOKSCRIPT_MT)
+    return class, super
+end
+
 ---
 --- Returns a function that calls a new function, giving it an older function as an argument. \
 --- Essentially, it's a version of `Utils.hook()` that works with local functions.
@@ -558,7 +585,7 @@ end
 --- *Source*: https://github.com/s-walrus/hex2color
 ---
 function Utils.hexToRgb(hex, value)
-    return {tonumber(string.sub(hex, 2, 3), 16)/256, tonumber(string.sub(hex, 4, 5), 16)/256, tonumber(string.sub(hex, 6, 7), 16)/256, value or 1}
+    return {tonumber(string.sub(hex, 2, 3), 16)/255, tonumber(string.sub(hex, 4, 5), 16)/255, tonumber(string.sub(hex, 6, 7), 16)/255, value or 1}
 end
 
 ---
@@ -581,7 +608,7 @@ function Utils.parseColorProperty(property)
     if not property then return nil end
     -- Tiled color properties are formatted as #AARRGGBB, where AA is the alpha value.
     local str = "#"..string.sub(property, 4) -- Get the hex string without the alpha value
-    local a = tonumber(string.sub(property, 2, 3), 16)/256 -- Get the alpha value separately
+    local a = tonumber(string.sub(property, 2, 3), 16)/255 -- Get the alpha value separately
     return Utils.hexToRgb(str, a)
 end
 
@@ -1754,10 +1781,17 @@ function Utils.absoluteToLocalPath(prefix, image, path)
     -- Split paths by seperator
     local base_path = Utils.split(path, "/")
     local dest_path = Utils.split(image, "/")
+    local up_count = 0
     while dest_path[1] == ".." do
+        up_count = up_count + 1
         -- Move up one directory
         table.remove(base_path, #base_path)
         table.remove(dest_path, 1)
+    end
+    if dest_path[1] == "libraries" then
+        for i = 2, up_count do
+            table.remove(dest_path, 1)
+        end
     end
 
     local final_path = table.concat(Utils.merge(base_path, dest_path), "/")
@@ -2360,10 +2394,10 @@ function Utils.squishAndTrunc(str, font, max_width, def_scale, min_scale, trunc_
 
             local trunc_str
             for i=1, string.len(str) do
-                trunc_str = string.sub(str, 1, i)
+                trunc_str = Utils.sub(str, 1, i)
                 local width = font:getWidth(trunc_str) * scale
                 if width > (max_width - affix_width) then
-                    trunc_str = string.sub(str, 1, i-1)
+                    trunc_str = Utils.sub(str, 1, i-1)
                     break
                 end
             end

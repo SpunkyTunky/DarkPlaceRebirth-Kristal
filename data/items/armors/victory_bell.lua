@@ -1,7 +1,7 @@
 local item, super = Class(Item, "victory_bell")
 
 function item:init()
-    super:init(self)
+    super.init(self)
 
     -- Display name
     self.name = "VictoryBell"
@@ -47,6 +47,7 @@ function item:init()
     -- Character reactions
     self.reactions = {
         noel = "(I don't think this is meant for me)",
+        ceroba = "... so why only after battles?",
     }
 end
 

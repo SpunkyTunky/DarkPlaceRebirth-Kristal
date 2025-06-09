@@ -43,6 +43,13 @@ Kristal.warp_bin_codes = {
     ["FLOORONE"] = { result = "main_hub", mod = "dpr_main" },
     ["GIMMICK"] = { result = "gimmick_test/gimmick_test1", mod = "dpr_main" },
     ["SLIDER"] = { result = "slider_start", mod = "dpr_main" },
+    ["WIFIDOWN"] = { result = "googlefield", mod = "dpr_main" },
+    ["THETOWER"] = { result = "main_outdoors/tower_outside", mod = "dpr_main" },
+    ["DEVDINER"] = {
+        result = function(cutscene)
+            cutscene:text("* This isn't legacy you [shake:5]idiot[shake:1].")
+        end,
+    },
 }
 local gray_area_info = {
     result = function(cutscene)
@@ -56,6 +63,45 @@ local gray_area_info = {
 }
 Kristal.warp_bin_codes["GRAYAREA"] = gray_area_info
 Kristal.warp_bin_codes["GREYAREA"] = gray_area_info
+
+--Sonic CD-inspired secret screens
+local song = Music()
+local message
+local function createSonicCDMessage(sprite_id, music_id, scale)
+    message = Sprite(sprite_id)
+    message.x, message.y = 0, 0
+	if scale ~= nil then
+        message:setScale(scale)
+	else
+	    message:setScale(2)
+	end
+    message:setLayer(WORLD_LAYERS["above_ui"] - 1)
+    message:setParallax(0, 0)
+    Game.world:addChild(message)
+	
+	if music_id ~= nil then
+	    song:play(music_id)
+    end 
+end 
+local sonic_cd_message = {
+    result = function(cutscene)
+        Assets.playSound("special_warp")
+        cutscene:fadeOut(0.5, { color = { 1, 1, 1}, music = true })
+        cutscene:wait(1)
+		if Kristal.warp_bin_codes["461225"] then
+		    createSonicCDMessage("misc/fun_is_infinite", "sonic_cd_boss")
+		end
+        cutscene:fadeIn(0.5, { music = false, wait = true })
+		cutscene:wait(function () return Input.pressed("confirm") end)
+        cutscene:fadeOut(0.5, { wait = true })
+        cutscene:wait(1)
+		song:stop()
+		message:remove()
+        cutscene:fadeIn(0.5, { music = true, wait = true })
+    end,
+    instant = true
+}
+Kristal.warp_bin_codes["461225"] = sonic_cd_message
 
 -- heres some new totally cool helper functions wowee
 
@@ -72,6 +118,11 @@ function Kristal:getBinCode(code)
                     result = mod.map,
                     mod = id,
                 }
+            else
+                if type(info) == "string" then
+                    info = {result = info}
+                end
+                info.mod = info.mod or id
             end
             return info
         end

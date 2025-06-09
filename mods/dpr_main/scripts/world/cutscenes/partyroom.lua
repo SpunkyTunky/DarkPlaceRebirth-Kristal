@@ -1,4 +1,8 @@
 return {
+    hero = function(cutscene, event)
+        cutscene:showNametag("Hero")
+        cutscene:text("* Hey.", "neutral", "hero")
+    end,
     susie = function(cutscene, event)
         cutscene:showNametag("Susie")
         if #Game.party >= 2 then
@@ -105,5 +109,17 @@ return {
             cutscene:text("* Man it's boring not being in the party...", "shy_down", "susie")
         end
         cutscene:hideNametag()
+    end,
+
+-- keep this at the bottom
+-- and type a face every time you edit this file
+-- :|
+-- :O
+-- :(
+-- :)
+    party = function(cutscene, event)
+        cutscene:after(function()
+           Game.world:openMenu(DarkCharacterMenu())
+        end)
     end,
 }

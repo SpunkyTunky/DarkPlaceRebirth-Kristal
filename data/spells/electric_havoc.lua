@@ -10,6 +10,8 @@ function spell:init()
     self.effect = "Electric\nStorm"
     -- Menu description
     self.description = "Bolts an enemy 3 times. Extremely powerful."
+    -- Check description
+    self.check = "Bolts an enemy\n3 times.\n* Extremely powerful."
 
     -- TP cost
     self.cost = 100
@@ -39,6 +41,40 @@ function spell:onCast(user, target)
 		cutAnim:setPosition(target:getRelativePos(target.width/2, target.height/2))
 		cutAnim.layer = target.layer + 0.01
 		user.parent:addChild(cutAnim)
+		Assets.playSound("shock", 1, 1)
+		Game.stage.timer:tween(0.5, cutAnim, {alpha = 0}, "linear", function()
+			cutAnim:remove()
+		end)
+	end
+
+	Game.battle.timer:after(0.25, function()
+		shock(1)
+		target:hurt(damage, user)
+		Game.battle.timer:after(0.25, function()
+			shock(-1)
+			target:hurt(damage, user)
+			Game.battle.timer:after(0.25, function()
+				shock(1)
+				target:hurt(damage, user)
+			end)
+		end)
+	end)
+end
+
+function spell:onLightCast(user, target)
+	local damage = 50
+
+	if target.defense >= 99 then
+		damage = 0
+	end
+
+	local function shock(scale_x)
+		local cutAnim = Sprite("party/jamm/dark/special/shock")
+		cutAnim:setOrigin(0.5, 1)
+		cutAnim:setScale(2 * scale_x, 2)
+		cutAnim:setPosition(target:getRelativePos(target.width/2, target.height/2))
+		cutAnim.layer = target.layer + 0.01
+		Game.battle:addChild(cutAnim)
 		Assets.playSound("shock", 1, 1)
 		Game.stage.timer:tween(0.5, cutAnim, {alpha = 0}, "linear", function()
 			cutAnim:remove()

@@ -15,7 +15,7 @@ function Console:init()
 
     self.history = {}
 
-    self:push("Welcome to [color:cyan]KRISTAL[color:reset]! This is the debug console.")
+    self:push("Welcome to [color:2C00AE]DARK PLACE[color:reset]! This is the debug console.")
     self:push("You can enter Lua here to be ran! Use [color:gray]clear()[color:reset] to clear the console.")
     self:push("")
 
@@ -44,16 +44,16 @@ function Console:createEnv()
     end
 
     function env.print(...)
-        local arg = {...}
+        local arg = {n = select("#", ...), ...}
         local print_string = ""
 
-        for i = 1, math.max(1,table.maxn(arg)) do
+        for i = 1, arg.n do
             local str = arg[i]
             if type(str) == "table" then
                 str = Utils.dump(str)
             end
             print_string = print_string .. tostring(str)
-            if i ~= table.maxn(arg) then
+            if i ~= arg.n then
                 print_string = print_string  .. "    "
             end
         end
@@ -349,6 +349,13 @@ function Console:run(str)
     if Utils.startsWith(run_string, "=") then
         run_string = "print(" .. Utils.sub(run_string, 2) .. ")"
     end
+    local j = run_string:find("Mod.jeku_memory")
+    if j then
+        self:log("What do you think you're doing?")
+        if Game.shop and Game.shop.id == "jeku_shop" then
+            Game.shop.shopkeeper:onEmote("insane")
+        end
+    end
     local status, err = pcall(function() self:unsafeRun(run_string) end)
     if (not status) and err then
         self:error(self:stripError(err))
@@ -359,8 +366,8 @@ end
 function Console:unsafeRun(str)
     local chunk, err = loadstring(str)
     if chunk then
-        self.env.selected = Kristal.DebugSystem.object
-        self.env["_"] = Kristal.DebugSystem.object
+        rawset(self.env, "selected", Kristal.DebugSystem.object)
+        rawset(self.env, "_", Kristal.DebugSystem.object)
         setfenv(chunk,self.env)
         self:push(chunk())
     else

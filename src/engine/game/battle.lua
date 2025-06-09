@@ -162,12 +162,45 @@ function Battle:init()
         skeledance:setColor(self.color)
 	    skeledance:play(1/15, true)
 	    skeledance:setScale(5, 2)
-        skeledance.alpha = 7/255
+        skeledance.alpha = 14/255
         skeledance.debug_select = false
 	    self:addChild(skeledance)
 
 	    skeledance.layer = BATTLE_LAYERS["bottom"]
+		
+        self.lines = {}
+        for _=1,4 do
+            self:spawnWeb(0,love.math.random(40,480), love.math.random(40,120),0)
+            self:spawnWeb(640,love.math.random(40,480), 640-love.math.random(40,120),0)
+        end
     end
+	
+    self.particles = {}
+    self.particle_interval = 0
+    self.particle_tex = Assets.getTexture("player/heart_menu_outline")
+    self.enable_particles = false
+	
+	for _,party1 in ipairs(Game.party) do
+		if party1:hasSpell("echo") then
+			local temp = {}
+			for _,party2 in ipairs(Game.party) do
+				if party1 ~= party2 and party2.id ~= "noel" then
+					for _,spell in ipairs(party2.spells) do
+						table.insert(temp, spell)
+					end
+				end
+			end
+			
+			for _,spell in ipairs(party1.spells) do
+				if spell.id == "echo" then
+					spell.spells = {}
+					for k,v in ipairs(temp) do
+						table.insert(spell.spells, v)
+					end
+				end
+			end
+		end
+	end
 end
 
 function Battle:createPartyBattlers()
@@ -523,6 +556,9 @@ function Battle:onStateChange(old,new)
         end
     elseif new == "VICTORY" then
         self.current_selecting = 0
+		
+		Game:getPartyMember("susie").rage = false
+		Game:getPartyMember("susie").rage_counter = 0
 
         if self.tension_bar then
             self.tension_bar:hide()
@@ -953,6 +989,7 @@ function Battle:spawnSoul(x, y)
     end
 end
 
+---@param dont_destroy? boolean
 function Battle:returnSoul(dont_destroy)
     if dont_destroy == nil then dont_destroy = false end
     local bx, by = self:getSoulLocation(true)
@@ -1234,6 +1271,9 @@ function Battle:processAction(action)
             end
 
             local damage = Utils.round(enemy:getAttackDamage(action.damage or 0, battler, action.points or 0))
+            if battler.chara:getWeapon().id == "berserkeraxe" and crit then
+               damage = damage*2
+            end
             if damage < 0 then
                 damage = 0
             end
@@ -1895,6 +1935,9 @@ function Battle:getEnemyFromCharacter(chara)
     end
 end
 
+--- Gets whether a specific character has an action lined up
+---@param character_id integer
+---@return boolean
 function Battle:hasAction(character_id)
     return self.character_actions[character_id] ~= nil
 end
@@ -2022,6 +2065,11 @@ function Battle:getPartyFromTarget(target)
     end
 end
 
+--- Hurts the `target` party member(s)
+---@param amount    number
+---@param exact?    boolean
+---@param target?   number|"ALL"|"ANY"|PartyBattler The target battler's index, instance, or strings for specific selection logic (defaults to `"ANY"`)
+---@return table?
 function Battle:hurt(amount, exact, target)
     -- If target is a numberic value, it will hurt the party battler with that index
     -- "ANY" will choose the target randomly
@@ -2360,6 +2408,24 @@ function Battle:nextTurn()
     if self.current_selecting ~= 0 and self.state ~= "ACTIONSELECT" then
         self:setState("ACTIONSELECT")
     end
+	
+	for _,party in ipairs(Game.party) do
+		for _,spell in ipairs(party.spells) do
+			if spell.id == "echo" then
+				if #spell.spells > 0 then
+					spell.spell_int = spell.spell_int + 1
+					local selected_spell = spell.spell_int%#spell.spells
+					if selected_spell == 0 then
+						selected_spell = #spell.spells
+					end
+					spell.current_spell = spell.spells[selected_spell]
+					spell.effect = "Current:\n" .. spell.current_spell:getName()
+					spell.tags = spell.current_spell.tags
+					spell.target = spell.current_spell.target
+				end
+			end
+		end
+	end
 end
 
 function Battle:checkGameOver()
@@ -2442,6 +2508,8 @@ function Battle:returnToWorld()
     end
 end
 
+---@param text          string|string[]
+---@param dont_finish?  boolean
 function Battle:setActText(text, dont_finish)
     self:battleText(text, function()
         if not dont_finish then
@@ -2467,6 +2535,9 @@ function Battle:shortActText(text)
     self.battle_ui.short_act_text_3:setText(text[3] or "")
 end
 
+--- Sets the current message in the battlebox and moves to the `BATTLETEXT` state until it is advanced, where it returns to the previous state by default
+---@param text string[]|string              The text to set
+---@param post_func? fun():boolean|string   When the text is advanced, the name of the state to move to, or a function to run
 function Battle:battleText(text,post_func)
     local target_state = self:getState()
 
@@ -2600,6 +2671,8 @@ function Battle:update()
                 self:setState("DIALOGUEEND")
             end
         end
+    elseif self.state == "SHORTACTTEXT" then
+        self:updateShortActText()
     end
 
     if self.state ~= "TRANSITIONOUT" then
@@ -2858,6 +2931,27 @@ function Battle:updateWaves()
     end
 end
 
+function Battle:updateShortActText()
+    if Input.pressed("confirm") or Input.down("menu") then
+        if (not self.battle_ui.short_act_text_1:isTyping()) and
+           (not self.battle_ui.short_act_text_2:isTyping()) and
+           (not self.battle_ui.short_act_text_3:isTyping()) then
+            self.battle_ui.short_act_text_1:setText("")
+            self.battle_ui.short_act_text_2:setText("")
+            self.battle_ui.short_act_text_3:setText("")
+            for _,iaction in ipairs(self.short_actions) do
+                self:finishAction(iaction)
+            end
+            self.short_actions = {}
+            self:setState("ACTIONS", "SHORTACTTEXT")
+        end
+    end
+end
+
+---@param string    string
+---@param x         number
+---@param y         number
+---@param color?    table
 function Battle:debugPrintOutline(string, x, y, color)
     color = color or {love.graphics.getColor()}
     Draw.setColor(0, 0, 0, 1)
@@ -2906,16 +3000,88 @@ function Battle:drawBackground()
     love.graphics.setLineWidth(1)
 
     for i = 2, 16 do
-        Draw.setColor(66 / 255, 0, 66 / 255, (self.transition_timer / 10) / 2)
+        if self.month == 2 and self.day == 14 then
+            Draw.setColor(128/255, 0/255, 85/255, self.transition_timer / 10 / 2)
+        elseif self.month == 10 and self.day == 31 then
+            Draw.setColor(1, 87/255, 0, (self.transition_timer / 10) / 2)
+        else
+            Draw.setColor(66/255, 0, 66/255, (self.transition_timer / 10) / 2)
+        end
         love.graphics.line(0, -210 + (i * 50) + math.floor(self.offset / 2), 640, -210 + (i * 50) + math.floor(self.offset / 2))
         love.graphics.line(-200 + (i * 50) + math.floor(self.offset / 2), 0, -200 + (i * 50) + math.floor(self.offset / 2), 480)
     end
 
     for i = 3, 16 do
-        Draw.setColor(66 / 255, 0, 66 / 255, self.transition_timer / 10)
+        if self.month == 2 and self.day == 14 then
+            Draw.setColor(128/255, 0/255, 85/255, self.transition_timer / 10)
+        elseif self.month == 10 and self.day == 31 then
+            Draw.setColor(1, 87/255, 0, self.transition_timer / 10)
+        else
+            Draw.setColor(66/255, 0, 66/255, self.transition_timer / 10)
+        end
         love.graphics.line(0, -100 + (i * 50) - math.floor(self.offset), 640, -100 + (i * 50) - math.floor(self.offset))
         love.graphics.line(-100 + (i * 50) - math.floor(self.offset), 0, -100 + (i * 50) - math.floor(self.offset), 480)
     end
+
+    if self.enable_particles then
+        local particle_to_remove = {}
+        for _,particle in ipairs(self.particles) do
+            particle.radius = Utils.approach(particle.radius, 0, DT)
+            particle.y = particle.y - particle.speed * DTMULT
+
+            if particle.radius <= 0 then
+                table.insert(particle_to_remove, particle)
+            end
+        end
+        for _,particle in ipairs(particle_to_remove) do
+            Utils.removeFromTable(self.particles, particle)
+        end
+
+        self.particle_interval = self.particle_interval + DT
+        if self.particle_interval >= 0.4 then
+            self.particle_interval = 0
+            local radius = Utils.random(2, 12)
+		
+            table.insert(self.particles, {
+                type = "hearts",
+                radius = radius, max_radius = radius,
+                x = Utils.random(SCREEN_WIDTH), y = SCREEN_HEIGHT + radius,
+                speed = 4 * Utils.random(0.5, 1),
+                scale = Utils.pick{1, 1.5, 2},
+            })
+        end
+		
+        for _,particle in ipairs(self.particles) do
+            if self.month == 2 and self.day == 14 then
+                Draw.setColor(196/255, 20/255, 152/255, (particle.radius / particle.max_radius) * self.transition_timer / 10)
+            else
+                Draw.setColor(1, 1, 1, (particle.radius / particle.max_radius) * self.transition_timer / 10)
+            end
+            if self.particles.type == "hearts" then
+                self.particle_tex = Assets.getTexture("player/heart_menu_outline")
+            end
+            local particle_ox, particle_oy = 0, 0
+            love.graphics.draw(self.particle_tex, particle.x, particle.y, particle.radius, particle.scale, particle.scale, particle_ox, particle_oy)
+        end
+    end
+	
+    if self.month == 2 and self.day == 14 then
+        self.enable_particles = true
+    else
+        self.enable_particles = false
+    end
+
+    if self.month == 10 and self.day == 31 then
+        for _,line in ipairs(self.lines) do
+            Draw.setColor(0.7, 0.7, 0.72, self.transition_timer / 10)
+            love.graphics.line(line:render())
+        end
+    end
+end
+
+function Battle:spawnWeb(x1, y1, x2, y2)
+    local curve = love.math.newBezierCurve(x1,y1, (x1+x2)/2,(y1+y2)/2 + love.math.random(20,100), x2,y2)
+    table.insert(self.lines, curve)
 end
 
 function Battle:isWorldHidden()
@@ -2978,6 +3144,17 @@ function Battle:getActiveParty()
     return Utils.filter(self.party, function(party) return not party.is_down end)
 end
 
+--- Resets the enemies index table, closing all gaps in the enemy select menu
+---@param reset_xact? boolean         Whether to also reset the XACT position
+function Battle:resetEnemiesIndex(reset_xact)
+    self.enemies_index = Utils.copy(self.enemies, true)
+    if reset_xact ~= false then
+        self.battle_ui:resetXACTPosition()
+    end
+end
+
+---@param id string
+---@return EnemyBattler
 function Battle:parseEnemyIdentifier(id)
     local args = Utils.split(id, ":")
     local enemies = Utils.filter(self.enemies, function(enemy) return enemy.id == args[1] end)
@@ -3333,20 +3510,7 @@ function Battle:onKeyPressed(key)
     elseif self.state == "BATTLETEXT" then
         -- Nothing here
     elseif self.state == "SHORTACTTEXT" then
-        if Input.isConfirm(key) then
-            if (not self.battle_ui.short_act_text_1:isTyping()) and
-               (not self.battle_ui.short_act_text_2:isTyping()) and
-               (not self.battle_ui.short_act_text_3:isTyping()) then
-                self.battle_ui.short_act_text_1:setText("")
-                self.battle_ui.short_act_text_2:setText("")
-                self.battle_ui.short_act_text_3:setText("")
-                for _,iaction in ipairs(self.short_actions) do
-                    self:finishAction(iaction)
-                end
-                self.short_actions = {}
-                self:setState("ACTIONS", "SHORTACTTEXT")
-            end
-        end
+        -- Nothing here
     elseif self.state == "ENEMYDIALOGUE" then
         -- Nothing here
     elseif self.state == "ACTIONSELECT" then
@@ -3358,6 +3522,7 @@ end
 
 function Battle:handleActionSelectInput(key)
     local actbox = self.battle_ui.action_boxes[self.current_selecting]
+    local old_selected_button = actbox.selected_button
 
     if Input.isConfirm(key) then
         actbox:select()
@@ -3377,12 +3542,8 @@ function Battle:handleActionSelectInput(key)
         return
     elseif Input.is("left", key) then
         actbox.selected_button = actbox.selected_button - 1
-        self.ui_move:stop()
-        self.ui_move:play()
     elseif Input.is("right", key) then
         actbox.selected_button = actbox.selected_button + 1
-        self.ui_move:stop()
-        self.ui_move:play()
     end
 
     if actbox.selected_button < 1 then
@@ -3392,43 +3553,75 @@ function Battle:handleActionSelectInput(key)
     if actbox.selected_button > #actbox.buttons then
         actbox.selected_button = 1
     end
+    
+    if old_selected_button ~= actbox.selected_button then
+        self.ui_move:stop()
+        self.ui_move:play()
+    end
 end
 
 function Battle:handleAttackingInput(key)
-    if Input.isConfirm(key) then
-        if not self.attack_done and not self.cancel_attack and #self.battle_ui.attack_boxes > 0 then
-            local closest
-            local closest_attacks = {}
+	if not Kristal.Config["altAttack"] then
+		if Input.isConfirm(key) then
+			if not self.attack_done and not self.cancel_attack and #self.battle_ui.attack_boxes > 0 then
+				local closest
+				local closest_attacks = {}
 
-            for _,attack in ipairs(self.battle_ui.attack_boxes) do
-                if not attack.attacked then
-                    local close = attack:getClose()
-                    if not closest then
-                        closest = close
-                        table.insert(closest_attacks, attack)
-                    elseif close == closest then
-                        table.insert(closest_attacks, attack)
-                    elseif close < closest then
-                        closest = close
-                        closest_attacks = {attack}
-                    end
-                end
-            end
+				for _,attack in ipairs(self.battle_ui.attack_boxes) do
+					if not attack.attacked then
+						local close = attack:getClose()
+						if not closest then
+							closest = close
+							table.insert(closest_attacks, attack)
+						elseif close == closest then
+							table.insert(closest_attacks, attack)
+						elseif close < closest then
+							closest = close
+							closest_attacks = {attack}
+						end
+					end
+				end
 
-            if closest and closest < 14.2 and closest > -2 then
-                for _,attack in ipairs(closest_attacks) do
-                    local points = attack:hit()
+				if closest and closest < 14.2 and closest > -2 then
+					for _,attack in ipairs(closest_attacks) do
+						local points = attack:hit()
 
-                    local action = self:getActionBy(attack.battler, true)
-                    action.points = points
+						local action = self:getActionBy(attack.battler, true)
+						action.points = points
 
-                    if self:processAction(action) then
-                        self:finishAction(action)
-                    end
-                end
-            end
-        end
-    end
+						if self:processAction(action) then
+							self:finishAction(action)
+						end
+					end
+				end
+			end
+		end
+	else
+		local key_to_party_index = {
+			isConfirm = 1,
+			isCancel  = 2,
+			isMenu    = 3
+		}
+
+		for key_check, party_index in pairs(key_to_party_index) do
+			if Input[key_check](key) and not self.attack_done and not self.cancel_attack and #self.battle_ui.attack_boxes > 0 then
+				for _, attack in ipairs(self.battle_ui.attack_boxes) do
+					if attack.battler == Game.battle.party[party_index] then
+						local closeness = attack:getClose()
+						if closeness and closeness < 14.2 and closeness > -2 then
+							local points = attack:hit()
+							local action = self:getActionBy(attack.battler, true)
+							action.points = points
+							if self:processAction(action) then
+								self:finishAction(action)
+							end
+						end
+						break
+					end
+				end
+			end
+		end
+	end
 end
 
 function Battle:canDeepCopy()

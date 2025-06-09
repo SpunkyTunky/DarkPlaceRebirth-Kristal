@@ -44,7 +44,8 @@ function item:init()
     self.can_equip = {
 		noelle = false,
 		dess = false,
-        brenda = false
+        brenda = false,
+        ceroba = false
 	}
 
     -- Character reactions
@@ -56,7 +57,10 @@ function item:init()
         brenda = "How the hell does this work?",
 		jamm = "I could use some lead, but if I have to sell it...",
         ["jamm+marcy"] = "That reminds me. Never eat Lunchables, Marcy.",
-        noel = "(I will treat this like a candy dispenser.)",
+        noel = "Eat Lead!",
+        ceroba = "Where would I even put it?",
+        suzy = "I am so good at this!",
+        hero = "Free cash.",
     }
 end
 

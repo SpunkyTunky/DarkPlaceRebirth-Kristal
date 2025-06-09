@@ -3,17 +3,65 @@
 
 function Mod:init()
     print("Loaded "..self.info.name.."!")
+	
+    self.voice_timer = 0
+    
     self.border_shaders = {}
 
     self:setMusicPitches()
+
+    if DELTARUNE_SAVE_ID then
+        DeltaruneLoader.load({chapter = 2, completed = true, slot = DELTARUNE_SAVE_ID})
+    end
 end
 
 function Mod:postInit(new_file)
+    if DELTARUNE_SAVE_ID then
+        local save = DeltaruneLoader.getCompletion(2,DELTARUNE_SAVE_ID)
+        self:loadDeltaruneFile(save)
+        Game.save_id = DELTARUNE_SAVE_ID
+        DELTARUNE_SAVE_ID = nil
+    end
     local items_list = {
         {
             result = "soulmantle",
             item1 = "flarewings",
             item2 = "discarded_robe"
+        },
+        {
+            result = "dd_burger",
+            item1 = "darkburger",
+            item2 = "darkburger"
+        },
+        {
+            result = "silver_card",
+            item1 = "amber_card",
+            item2 = "amber_card"
+        },
+        {
+            result = "twinribbon",
+            item1 = "pink_ribbon",
+            item2 = "white_ribbon"
+        },
+        {
+            result = "spikeband",
+            item1 = "glowwrist",
+            item2 = "ironshackle"
+        },
+        {
+            result = "tensionbow",
+            item1 = "bshotbowtie",
+            item2 = "tensionbit"
+        },
+        {
+            result = "peanut",
+            item1 = "nut",
+            item2 = "nut"
+        },
+        {
+            result = "quadnut",
+            item1 = "peanut",
+            item2 = "peanut"
         },
     }
     Kristal.callEvent("setItemsList", items_list)
@@ -43,10 +91,11 @@ function Mod:postInit(new_file)
     end
     
     if not Game:getFlag("FUN") then
-        local random = math.random(1,100)
+        local random = love.math.random(1,100)
         Game:setFlag("FUN", random)
     end
-
+	
+	Game:setFlag("devDinerBorderState", nil)
     self:initializeImportantFlags(new_file)
 end
 
@@ -104,6 +153,32 @@ function Mod:initializeImportantFlags(new_file)
     end
 end
 
+function Mod:postLoad()
+    -- Switch to the very cool debug mode!...?
+
+    if not Game:getFlag("FUN") then
+        local random = love.math.random(1,100)
+        Game:setFlag("FUN", random)
+    end
+
+    if (Game:getFlag("FUN") >= 90 or Game.save_name == "JOEY") and love.math.random() < 0.1 then
+        if Game.world and Game.world:hasCutscene() then
+            Game.world:stopCutscene()
+        end
+        Game:setFlag("FUN", love.math.random(1,100))
+        local save_data = Utils.copy(Game:save(Game.world.player:getPosition()), true)
+        Kristal.clearModState()
+        Kristal.DebugSystem:refresh()
+        Kristal.setState("Debug", save_data)
+    end
+	
+	Game:rollShiny("hero")
+end
+
+function Mod:preUpdate()
+    self.voice_timer = Utils.approach(self.voice_timer, 0, DTMULT)
+end
+
 function Mod:addGlobalEXP(exp)
     Game:setFlag("library_experience", Utils.clamp(Game:getFlag("library_experience", 0) + exp, 0, 99999))
 
@@ -144,15 +219,6 @@ function Mod:unlockQuest(quest, silent)
     end
 end
 
-function Mod:registerDebugOptions(debug)
-    debug:registerOption("main", "Party Menu", "Enter the  Party  Menu.", 
-        function () 
-            Game.world:openMenu(DarkCharacterMenu()) 
-            debug:closeMenu()
-        end
-    )
-end
-
 function Mod:onMapMusic(map, music)
     -- Diner music
     local cur_song = Game:getFlag("curJukeBoxSong")
@@ -171,5 +237,32 @@ function Mod:onMapMusic(map, music)
 	local can_kill = Game:getFlag("can_kill", false)
     if music == "deltarune/cybercity" and can_kill == true then
         return "deltarune/cybercity_alt"
+    end
+end
+
+---@param file DeltaruneSave
+function Mod:loadDeltaruneFile(file)
+    -- TODO: Load items into custom storages, and
+    -- give the player access to that stuff much later in the game.
+    file:load()
+    if file.failed_snowgrave then
+    elseif file.snowgrave then
+        Game:setFlag("POST_SNOWGRAVE", true)
+    end
+end
+
+-- Necessery for Jeku and Noel's interaction in the former's shop
+-- as the function in Noel's actor is not called in that case
+function Mod:onTextSound(voice, node, text)
+    if voice == "noel" and Game.shop then
+        Assets.playSound("voice/noel/"..string.lower(node.character), 1, 1)
+        return true
+    end
+    if voice == "rx1" then
+        if self.voice_timer == 0 then
+            local snd = Assets.playSound(Utils.pick{"voice/rx1", "voice/rx2", "voice/rx3"})
+            self.voice_timer = 2
+        end
+        return true
     end
 end

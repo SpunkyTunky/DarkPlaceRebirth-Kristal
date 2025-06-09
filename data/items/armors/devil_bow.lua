@@ -1,7 +1,7 @@
 local item, super = Class(Item, "devil_bow")
 
 function item:init()
-    super:init(self)
+    super.init(self)
 
     -- Display name
     self.name = "Devil's Bow"
@@ -47,6 +47,7 @@ function item:init()
     -- Character reactions
     self.reactions = {
         noel = "Oh, fucking thanks I *really* needed a debuff.",
+        ceroba = "That choice is on you.",
     }
 end
 

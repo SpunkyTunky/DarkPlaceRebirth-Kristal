@@ -10,7 +10,7 @@ function item:init()
 
     self.effect = ""
     self.shop = ""
-    self.description = "Made by Ceroba Ketsukane.\nHas multiple powerful abilities."
+    self.description = "A powerful staff that has been transformed by\nthe dark to be even more powerful."
 
     self.price = 400
     self.can_sell = true
@@ -21,19 +21,18 @@ function item:init()
     self.instant = false
 
     self.bonuses = {
-        attack = 2,
+        attack = 1,
         magic = 3,
     }
 
     self.can_equip = {
         ceroba = true,
     }
- 
+
     self.reactions = {
         susie = "A stick with a ribbon? Seriously?",
         ralsei = "Not sure if I can use this...",
 		dess = "not on my wizard shit rn srry",
-        martlet = "This belongs to Ceroba...",
         noel = "I want it, but I don't want to use it.",
         noelle = "*ding* I love the bell!",
         ceroba = "Back where it belongs.",

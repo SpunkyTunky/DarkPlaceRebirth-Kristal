@@ -91,6 +91,7 @@ function Game:enter(previous_state, save_id, save_name, fade)
     self.quick_save = nil
 
     Kristal.callEvent(KRISTAL_EVENT.init)
+    Game:loadHooks()
 
     self.lock_movement = false
 
@@ -131,6 +132,92 @@ function Game:enter(previous_state, save_id, save_name, fade)
     end
 end
 
+function Game:addEventTime(time_added)
+	for k,v in pairs(self:getFlag("PROMISES", {})) do
+		self:getFlag("PROMISES")[k] = self:getFlag("PROMISES")[k] - time_added
+	end
+	self:checkPromises()
+end
+
+function Game:addPromise(promise, event_time)
+	self:getFlag("PROMISES")[promise] = event_time
+end
+
+function Game:checkPromises()
+	-- Step 1: Convert to sortable array of {key, value}
+	local sorted = {}
+	for k, v in pairs(self:getFlag("PROMISES")) do
+		table.insert(sorted, {key = k, value = v})
+	end
+
+	-- Step 2: Sort by value (ascending)
+	table.sort(sorted, function(a, b)
+		return a.value < b.value
+	end)
+
+	local promises_to_fulfill = {}
+	-- Step 3: Loop through sorted array
+	for i, pair in ipairs(sorted) do
+		if pair.value <= 0 then
+			table.insert(promises_to_fulfill, pair.key)
+		end
+	end
+	
+	local nextPromise
+	function nextPromise()
+		local cutscene_id = table.remove(promises_to_fulfill, 1)
+		if not cutscene_id then return end
+		self:getFlag("PROMISES")[cutscene_id] = nil
+		local cutscene = Game.world:startCutscene("promises." .. cutscene_id)
+		cutscene:after(nextPromise)
+	end
+	
+	nextPromise()
+end
+
+function Game:rollShiny(id, force)
+	if (not self:getFlag("SHINY") or self:getFlag("SHINY")[id] == nil) or force then
+		local roller = love.math.random(1, 100)
+		-- Kristal.Console:log(id .. ": " .. roller)
+		if not self:getFlag("SHINY") then
+			self:setFlag("SHINY", {})
+		end
+		if roller == 66 then
+			self:getFlag("SHINY")[id] = true
+		else
+			self:getFlag("SHINY")[id] = false
+		end
+	else
+		Kristal.Console:log("Tried to roll shiny for " .. id .. ", but they were already rolled.")
+	end
+end
+
+function Game:forceShiny(id, what)
+	self:getFlag("SHINY")[id] = (what ~= false)
+end
+
+function Game:loadHooks()
+    if MagicalGlassLib then
+        Utils.hook(LightEnemyBattler, "init", function(orig, self, actor, use_overlay)
+            orig(self)
+            self.service_mercy = 20
+        end)
+        Utils.hook(LightEnemyBattler, "registerMarcyAct", function(orig, self, name, description, party, tp, highlight, icons)
+            if Game:getFlag("marcy_joined") then
+                self:registerShortActFor("jamm", name, description, party, tp, highlight, icons)
+                self.acts[#self.acts].color = {0, 1, 1}
+            end
+        end)
+        Utils.hook(LightEnemyBattler, "registerShortMarcyAct", function(orig, self, name, description, party, tp, highlight, icons)
+            if Game:getFlag("marcy_joined") then
+                self:registerActFor("jamm", name, description, party, tp, highlight, icons)
+                self.acts[#self.acts].color = {0, 1, 1}
+            end
+        end)
+        Utils.hook(LightEnemyBattler, "onService", function(orig, self, spell) end)
+        Utils.hook(LightEnemyBattler, "canService", function(orig, self, spell) return true end)
+    end
+end
 
 function Game:leave()
     self:clear()
@@ -235,6 +322,7 @@ function Game:getSavePreview()
     }
 end
 
+---@overload fun(self: Game) : SaveData
 ---@overload fun(self: Game, marker: string) : SaveData
 ---@overload fun(self: Game, position: {x: number, y: number}) : SaveData
 ---@param x number
@@ -523,6 +611,8 @@ function Game:load(data, index, fade)
             end
         end
     end
+
+    local swapped_dlc = Game:getFlag("is_swapping_mods", false)
     -- Make sure it only comes back when you load a file, not when switching between DLCs
     if not Game:getFlag("is_swapping_mods", false) and Game:getFlag("oddstone_tossed", false) then
         -- If you threw away the Odd Stone, bring it back
@@ -536,7 +626,7 @@ function Game:load(data, index, fade)
     Game:setFlag("is_swapping_mods", false)
     -- END SAVE FILE VARIABLES --
 
-    Kristal.callEvent(KRISTAL_EVENT.load, data, self.is_new_file, index)
+    Kristal.callEvent(KRISTAL_EVENT.load, data, self.is_new_file, index, swapped_dlc)
 
     -- Load the map if we have one
     if map then
@@ -563,7 +653,34 @@ function Game:load(data, index, fade)
         self:encounter(self:getBossRef(self.bossrush_encounters[1]).encounter)
     end
 
-    Kristal.callEvent(KRISTAL_EVENT.postLoad)
+    Kristal.callEvent(KRISTAL_EVENT.postLoad, swapped_dlc)
+
+
+    --Code stolen from Simbel's depths dlc
+    if Kristal.Config["dLoad"] == true then
+		local text = Text("FILE " ..Game.save_id.. " LOADED")
+		text:setParallax(0)
+		text:setScreenPos(3, 3)
+		text:setLayer(WORLD_LAYERS["top"])
+		text.alpha = 5
+		text:setGraphics({
+			fade_to = 0,
+			fade = 0.1,
+			fade_callback = function(self) self:remove() end
+		})
+		Game.world:addChild(text)
+    end
+	
+	if not self:getFlag("SHINY") then
+		self:setFlag("SHINY", {})
+		for k,v in ipairs(Game:getFlag("unlockedPartyMembers", {})) do
+			self:rollShiny(v)
+		end
+	end
+	
+	if not self:getFlag("PROMISES") then
+		self:setFlag("PROMISES", {})
+	end
 end
 
 ---@param light? boolean
@@ -1038,13 +1155,35 @@ function Game:getSoulColor()
     return 1, 0, 0, 1
 end
 
----@return PartyMember
+---@return string
+function Game:getSoulFacing()
+    if Game.state == "BATTLE" and Game.battle and Game.battle.encounter and Game.battle.encounter.getSoulFacing and Game.battle.encounter:getSoulFacing() then
+        return Game.battle.encounter:getSoulFacing()
+    end
+
+    local face = Kristal.callEvent(KRISTAL_EVENT.getSoulFacing)
+    if face ~= nil then
+        return face
+    end
+    
+    local chara = Game:getSoulPartyMember()
+    
+    if chara and chara:getSoulPriority() >= 0 and chara:getSoulFacing() then
+        return chara:getSoulFacing()
+    end
+    
+    return "up"
+end
+
+---@return PartyMember?
 function Game:getActLeader()
     for _,party in ipairs(self.party) do
-        if party.has_act then
+        if party:hasAct() then
             return party
         end
     end
+
+    return nil
 end
 
 ---@param chara  string|Follower
@@ -1540,10 +1679,8 @@ end
 
 function Game:unlockPartyMember(member)
     Kristal.callEvent(KRISTAL_EVENT.onDPUnlockPartyMember, member)
-    local currentUnlockedParty = Game:getFlag("_unlockedPartyMembers")
     if Game:getPartyMember(member) then
-        table.insert(currentUnlockedParty, member)
-        Game:setFlag("_unlockedPartyMembers", currentUnlockedParty)
+        table.insert(Game:getFlag("_unlockedPartyMembers"), member)
     else
         error("Could not find any existing party member with id \""..member.."\".")
     end
@@ -1589,9 +1726,9 @@ function Game:isDessMode()
 end
 
 --- Debug function -
---- Unlocks every party member (Except for Noel since their unlock mechanics are weird)
+--- Unlocks every party member (Except for Noel since their unlock mechanics are weird) --Thank you for not adding Noel to this list!
 function Game:unlockAllPartyMembers()
-    local unlock = {"berdly", "brenda", "ceroba", "ddelta", "dess", "hero", "jamm", "kris", "mario", "nelle", "noelle", "ostarwalker", "pauling", "ralsei", "susie"}
+    local unlock = {"berdly", "bor", "brenda", "ceroba", "ddelta", "dess", "hero", "jamm", "kris", "mario", "nell", "noelle", "ostarwalker", "pauling", "ralsei", "susie", "suzy"}
     for i, v in ipairs(unlock) do
         Game:unlockPartyMember(v)
     end
@@ -1602,6 +1739,20 @@ function Game:isSpecialMode(name)
     if Game.save_name:upper() == "EVERYCHALLEN" and name ~= "DESS" then return true end
     if Game.save_name:upper() == "NIGHTMAREWAD" then return true end
     return Game.save_name:upper() == name:upper()
+end
+
+function Game:isTauntingAvaliable()
+    if self.let_me_taunt then return true end
+    if Game.save_name:upper() == "PEPPINO" then return true end
+
+    for _,party in ipairs(Game.party) do
+        if party:checkArmor("pizza_toque") then return true end
+    end
+
+    if Game.save_name:upper() == "EVERYCHALLEN" and name ~= "DESS" then return true end
+    if Game.save_name:upper() == "NIGHTMAREWAD" then return true end
+
+    return false
 end
 
 return Game

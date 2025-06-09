@@ -15,12 +15,14 @@ function character:init()
 
     self.soul_priority = 2
     self.soul_color = {1, 0, 0}
+    self.soul_facing = "up"
 
     self.has_act = true
-    self.has_spells = false
-
-    self.has_xact = true
+    self.has_spells = true
+    self.has_xact = false
     self.xact_name = "H-Action"
+    self:addSpell("half-cify")
+    self:addSpell("echo")	-- Nobody else should have this spell or it could break
 
     self.health = 90
 
@@ -28,7 +30,7 @@ function character:init()
         health = 90,
         attack = 14,
         defense = 3,
-        magic = 1
+        magic = 4
     }
     self.max_stats = {}
 
@@ -42,7 +44,7 @@ function character:init()
 
     self.color = {1, 0.5, 0}
     self.dmg_color = {1, 0.5, 0.25}
-    self.attack_bar_color = {1, 0.5, 162/255}
+    self.attack_bar_color = {1, 0.75, 0}
     self.attack_box_color = {1, 0.5, 0}
     self.xact_color = {1, 0.5, 0}
 
@@ -110,11 +112,30 @@ function character:getTitle()
     end
 end
 
+function character:getActor(light)
+    if light == nil then
+        light = Game.light
+    end
+    if light then
+        return self.lw_actor or self.actor
+    elseif Game.world.map.data.properties.blue_skies then
+        return "hero_sfb"
+    else
+        return self.actor
+    end
+end
+
 function character:addKarma(ammount)
     local newkarma = self:getFlag("karma") + ammount
     if newkarma > 100 then newkarma = 100 end
     if newkarma < -100 then newkarma = -100 end
     self:setFlag("karma", newkarma)
+end
+
+function character:onTurnStart(battler)
+    if self:checkWeapon("harvester") and not Game:getFlag("IDLEHEALDOESNTWORK") then
+        self:heal(9)
+    end
 end
 
 return character
