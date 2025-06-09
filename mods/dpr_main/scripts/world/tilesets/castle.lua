@@ -9,7 +9,7 @@ return {
   spacing = 0,
   margin = 0,
   columns = 12,
-  image = "../../../assets/sprites/tilesets/emerest.png",
+  image = "../../../assets/sprites/tilesets/castle.png",
   imagewidth = 512,
   imageheight = 416,
   objectalignment = "unspecified",
