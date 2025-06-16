@@ -911,6 +911,9 @@ local cliffside = {
                     
                     Game.world.music:play("demonic_little_grey_cliffs", 1, 1)
                 end
+                if Game:getFlag("claimb_claws", true) then
+                    Game:setFlag("claimb_susie", true)
+                end
                 Game:setFlag(crystal.flag, true)
             else
                 --cutscene:text("* You can't break a seal from the side you[color:yellow][wait:5] dummy[color:reset]!")
